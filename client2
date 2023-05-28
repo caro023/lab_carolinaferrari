@@ -1,0 +1,77 @@
+HOST = "127.0.0.1"  
+PORT = 56515   
+
+import socket, sys, struct
+import threading
+
+#inviano al server un numero imprecisato di sequenze di byte; quando il client ha inviato
+#  l'ultima sequenza esso segnala che non ce ne sono altre inviandone una di lunghezza 0. 
+# Il server deve scrivere ognuna di queste sequenze (tranne quella di lunghezza zero) nella FIFO `capos`.
+
+def send_file(file_name):
+
+    try:
+        # Apre il file di testo
+        with open(file_name, 'r') as file:
+
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, PORT))
+
+                msg = "b"  
+                 # converte il messaggio in sequenza di byte
+                s.sendall(msg.encode())
+
+                # Invia le linee al server una alla volta precedute dalla lunghezza
+                for line in file:
+                    line_length = len(line)
+                    assert(len(line)<2048)
+                    #length_bytes = line_length.to_bytes(2, byteorder='big')
+                    s.sendall(struct.pack("!i",line_length))
+                    s.sendall(line.encode())
+
+
+                # Invia una sequenza di lunghezza 0 per indicare la fine
+                s.sendall(struct.pack("!i",0))
+                s.sendall("".encode())
+                # Chiude il socket
+                s.shutdown(socket.SHUT_RDWR)
+
+        print("Invio completato per il file:", file_name)
+
+    except FileNotFoundError:
+        print("File non trovato:", file_name)
+
+def main():
+
+    n = len(sys.argv)
+    file_names=[]
+    for i in range(1,n):
+        file_names.append(sys.argv[i])
+    
+    threads = []
+
+    # Crea un thread per ogni file di testo
+    for file_name in file_names:
+        thread = threading.Thread(target=send_file, args=(file_name,))
+        threads.append(thread)
+        thread.start()
+
+    # Attende la terminazione di tutti i thread
+    for thread in threads:
+        thread.join()
+
+    print("Tutti i file sono stati inviati.")
+
+if __name__ == '__main__':
+    main()
+
+
+
+
+
+
+
+
+
+
+ 
