@@ -14,6 +14,7 @@
 #include <fcntl.h>  
 #include <sys/stat.h>  
 #include <sys/types.h>
+#include <stdint.h>
 
 typedef struct {
   //servono per paradigma lettori scrittori
@@ -23,7 +24,7 @@ typedef struct {
   pthread_mutex_t mutex; // mutex associato alla condition variable
   pthread_mutex_t ordering; //serve per dare fairness
   //accesso al buffer 
-  char *buffer;
+  char **buffer;
   pthread_mutex_t *pmutex_buf;
   sem_t *sem_free_slots;
   sem_t *sem_data_items;
@@ -34,7 +35,7 @@ typedef struct {
 
 typedef struct {
   //accesso al buffer 
-  char *buffer;
+  char **buffer;
   //pthread_mutex_t *pmutex_buf;
   sem_t *sem_free_slots;
   sem_t *sem_data_items;
@@ -47,13 +48,13 @@ typedef struct {
 pthread_t capoWrite;  // Puntatore al thread capo scrittore e lettore 
 pthread_t capoRead; 
 //static int n=0;
-int n=0;
+static int n=0;
 FILE* file;
 
 
 #define Num_elem 1000000 //dimensione della tabella hash 
 #define PC_buffer_len 10// lunghezza dei buffer produttori/consumatori
-#define PORT 56515`// porta usata dal server dove `XXXX` sono le ultime quattro cifre del vostro numero di matricola. 
+#define PORT 56515// porta usata dal server dove `XXXX` sono le ultime quattro cifre del vostro numero di matricola. 
 #define Max_sequence_length 2048 //massima lunghezza di una sequenza che viene inviata attraverso un socket o pipe
 
 /*void handler(int s)
@@ -72,6 +73,7 @@ void termina(const char *messaggio){
 // crea un oggetto di tipo entry
 // con chiave s e valore n
   ENTRY *entry(char *s, int n) {
+    printf("entry");
   ENTRY *e = malloc(sizeof(ENTRY));
   if(e==NULL) termina("errore malloc entry 1");
   e->key = strdup(s); // salva copia di s
@@ -91,6 +93,7 @@ void distruggi_entry(ENTRY *e)
 
   // inserisce gli elementi sulla linea di comando
   void aggiungi (char *s) {
+    printf("aggiungi");
     ENTRY *e = entry(s, 1);
     ENTRY *r = hsearch(*e,FIND);
     if(r==NULL) { // la entry è nuova
@@ -111,6 +114,7 @@ void distruggi_entry(ENTRY *e)
 
  // ritorna il valore associato alla stringa se presente, sennò 0
   int conta(char *s) {
+    printf("conta");
     ENTRY *e = entry(s, 1);
     ENTRY *r = hsearch(*e,FIND);
     if(r==NULL) return 0;
@@ -132,17 +136,10 @@ void rw_init(rw *z)
 
 /**************************************/
 
-void pc_init(rw *z)
-{
-  sem_init(z->sem_free_slots,0,PC_buffer_len);
-  sem_init(z->sem_data_items,0,0);
-}
-
-/**************************************/
-
 // inizio uso da parte di un reader
 void read_lock(rw *z)
 {
+  printf("read lock");
   pthread_mutex_lock(&z->ordering);  // coda di ingresso
   pthread_mutex_lock(&z->mutex);
   while(z->writing>0)
@@ -155,6 +152,7 @@ void read_lock(rw *z)
 // fine uso da parte di un reader
 void read_unlock(rw *z)
 {
+  printf("read unlock");
   assert(z->readers>0);  // ci deve essere almeno un reader (me stesso)
   assert(!z->writing);   // non ci devono essere writer 
   pthread_mutex_lock(&z->mutex);
@@ -169,6 +167,7 @@ void read_unlock(rw *z)
 // inizio uso da parte di writer  
 void write_lock(rw *z)
 {
+  printf("write lock");
   pthread_mutex_lock(&z->ordering);    // coda di ingresso
   pthread_mutex_lock(&z->mutex);
   while(z->writing>0 || z->readers>0)
@@ -183,6 +182,7 @@ void write_lock(rw *z)
 // fine uso da parte di un writer
 void write_unlock(rw *z)
 {
+  printf("write unlock");
   assert(z->writing>0);
   pthread_mutex_lock(&z->mutex);
   z->writing--;               // cambio stato
@@ -195,15 +195,15 @@ void write_unlock(rw *z)
  
 
 void *Reader(void* arg) {
+  printf("reader");
   rw *a = ( rw *)arg;
-  printf("ciao 1");
   char* str;
   int tot;
   //accesso al buffer
   do {
       sem_wait(a->sem_data_items);
       pthread_mutex_lock(a->pmutex_buf);
-      str = &(a->buffer[*(a->index) % PC_buffer_len]);
+      str = (a->buffer[*(a->index) % PC_buffer_len]);
       *(a->index) +=1;
       pthread_mutex_unlock(a->pmutex_buf);
       sem_post(a->sem_free_slots);
@@ -236,16 +236,15 @@ void *Writer(void* arg) {
     do {
       sem_wait(a->sem_data_items);
       pthread_mutex_lock(a->pmutex_buf);
-      str = &(a->buffer[*(a->index) % PC_buffer_len]);
+      str = (a->buffer[*(a->index) % PC_buffer_len]);
       *(a->index) +=1;
       pthread_mutex_unlock(a->pmutex_buf);
       sem_post(a->sem_free_slots);
       write_lock(a);
       aggiungi(str);  
       write_unlock(a);
-
-      free(str);
     } while(str!=NULL);
+    free(str);
   pthread_exit(NULL);
 
   //printf("WRITER%ld TERMINATO\n", id);  
@@ -257,8 +256,6 @@ void *Writer(void* arg) {
 void* Capo(void* arg) {
   printf("ciao 3");
   capi *a = ( capi *)arg;
-   // FILE* fifo;
-   // char buffer[256];
   int fd = open(a->pipeName,O_RDONLY);
   if (fd < 0) // se il file non esiste termina con errore
     termina("Errore apertura named pipe"); 
@@ -283,17 +280,20 @@ void* Capo(void* arg) {
       char* str = strtok(copy, ".,:; \n\r\t");
       while (str != NULL) {
         sem_wait(a->sem_free_slots);
-        a->buffer[*(a->index)++ % PC_buffer_len] = *strdup(str); //rimuovere * ???
+        a->buffer[*(a->index)++ % PC_buffer_len] = str;
+        //*strdup(str); //rimuovere * ???
         sem_post(a->sem_data_items);
         str = strtok(NULL, ".,:; \n\r\t"); //???????????????????
       }
       free(copy);
+      free(str);
     }
   close(fd);       
 
+  char* fine=NULL;
   for(int i=0;i<a->threads;i++) {
     sem_wait(a->sem_free_slots);
-    a->buffer[*(a->index)++ % PC_buffer_len] = (char *)NULL;
+    a->buffer[*(a->index)++ % PC_buffer_len] = fine;
     sem_post(a->sem_data_items);
   }
   
@@ -337,11 +337,9 @@ void *gbody(void *arg) {
 int main(int argc, char *argv[])
 { 
   if(argc!=3) {
-    printf("Uso:\n\t%s num_reader, num_writer \n",argv[0]);
+    //printf("Uso:\n\t%s num_reader, num_writer \n",argv[0]);
     exit(1);
   }
-
-  printf("ciao");
 
   // crea tabella hash
   int ht = hcreate(Num_elem);
@@ -352,66 +350,61 @@ int main(int argc, char *argv[])
   if (file == NULL) 
         termina("Errore apertura file di log");
 
-  printf("ciao");
-
   int r = atoi(argv[1]);
   int w = atoi(argv[2]);
   assert(r>0);
   assert(w>0);
-  printf("ciao");
 
   char* rbuffer[PC_buffer_len];
   char* wbuffer[PC_buffer_len];
   int rpindex=0, rcindex=0; //rp,wp index ai theread capi
   int wpindex=0, wcindex=0;
-  pthread_mutex_t rmupbuf = PTHREAD_MUTEX_INITIALIZER; //capo read
+ // pthread_mutex_t rmupbuf = PTHREAD_MUTEX_INITIALIZER; //capo read
   pthread_mutex_t rmucbuf = PTHREAD_MUTEX_INITIALIZER;
-  pthread_mutex_t wmupbuf = PTHREAD_MUTEX_INITIALIZER; // capo write
+ // pthread_mutex_t wmupbuf = PTHREAD_MUTEX_INITIALIZER; // capo write
   pthread_mutex_t wmucbuf = PTHREAD_MUTEX_INITIALIZER;
   pthread_mutex_t fdmutex = PTHREAD_MUTEX_INITIALIZER; //mutex per accesso a file lettori.log
-  sem_t sem_free_slots, sem_data_items;
-  sem_init(&sem_free_slots,0,PC_buffer_len);
-  sem_init(&sem_data_items,0,0);
-  
-  printf("ciao");
+  sem_t sem_free_slots_r, sem_data_items_r;
+  sem_init(&sem_free_slots_r,0,PC_buffer_len);
+  sem_init(&sem_data_items_r,0,0);
+
+  sem_t sem_free_slots_w, sem_data_items_w;
+  sem_init(&sem_free_slots_w,0,PC_buffer_len);
+  sem_init(&sem_data_items_w,0,0);
+
 
   //thread capo lettore
   capi cr;
-  printf("ciao");
  // pthread_t capoRead;
   //pc_init(&cr);
-  cr.buffer = rbuffer[0]; //assegna puntatore al primo elemento dell'array 
+  cr.buffer = rbuffer; //assegna puntatore al primo elemento dell'array 
   //cr.pmutex_buf = &rmupbuf;
-  printf("ciao");
   cr.index = &rpindex;
-  cr.sem_data_items = &sem_data_items; //funzione pc_init
-  cr.sem_free_slots = &sem_free_slots;
+  cr.sem_data_items = &sem_data_items_r; //funzione pc_init
+  cr.sem_free_slots = &sem_free_slots_r;
   cr.threads = r;
   cr.pipeName = "capolet";
   printf("ciao 4");
-  if((pthread_create(&capoRead,NULL,Capo,NULL))!=0){
+  if((pthread_create(&capoRead,NULL,Capo,&cr))!=0){
       fprintf(stderr, "pthread_create Reader failed\n");
       return -1;
   }
-  printf("ciao 6");
 
   //thread capo scrittore 
   capi cw;
   //pthread_t capoWrite;
   // pc_init(&cw);
-  cw.sem_data_items = &sem_data_items; //funzione pc_init
-  cw.sem_free_slots = &sem_free_slots;
-  cw.buffer = wbuffer[0];
+  cw.sem_data_items = &sem_data_items_w; //funzione pc_init
+  cw.sem_free_slots = &sem_free_slots_w;
+  cw.buffer = wbuffer;
   //cw.pmutex_buf = &wmupbuf;
   cw.index = &wpindex;
   cw.threads = w;
   cw.pipeName = "caposc";
-  if((pthread_create(&capoWrite,NULL,Capo,NULL))!=0){
+  if((pthread_create(&capoWrite,NULL,Capo,&cw))!=0){
       fprintf(stderr, "pthread_create Reader failed\n");
       return -1;
   }
-
-  printf("ciao 7");
 
   //thread scrittori e lettori
   rw rc[r];
@@ -423,13 +416,12 @@ int main(int argc, char *argv[])
   for(int i=0;i<r;i++) {
    // faccio partire il thread i
     rw_init(&rc[i]);
-    pc_init(&rc[i]);
+    rc[i].sem_data_items = &sem_data_items_r; 
+    rc[i].sem_free_slots = &sem_free_slots_r;
     rc[i].index = &rcindex;
-    rc[i].buffer = rbuffer[0];  
+    rc[i].buffer = rbuffer;  
     rc[i].pmutex_buf = &rmucbuf;
     rc[i].mutex_fd = &fdmutex;
-    //rc[i].sem_data_items = &sem_data_items;
-    //rc[i].sem_free_slots = &sem_free_slots;
     if((pthread_create(&read[i],NULL,Reader,rc+i))!=0){
       fprintf(stderr, "pthread_create Reader failed\n");
       return -1;
@@ -439,9 +431,10 @@ int main(int argc, char *argv[])
   for(int i=0;i<w;i++) {
    // faccio partire il thread i
     rw_init(&wc[i]);
-    pc_init(&wc[i]);
+    rc[i].sem_data_items = &sem_data_items_w; //funzione pc_init
+    rc[i].sem_free_slots = &sem_free_slots_w;
     wc[i].index = &wcindex;
-    wc[i].buffer = wbuffer[0];  
+    wc[i].buffer = wbuffer;  
     wc[i].pmutex_buf = &wmucbuf;
     if((pthread_create(&write[i],NULL,Writer,wc+i))!=0){
       fprintf(stderr, "pthread_create Writer failed\n");
