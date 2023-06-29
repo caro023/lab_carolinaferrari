@@ -23,12 +23,14 @@ def send_file(file_name):
 
                 # Invia le linee al server una alla volta precedute dalla lunghezza
                 for line in file:
-                    line_length = len(line)
-                    assert(len(line)<2048)
-                    #length_bytes = line_length.to_bytes(2, byteorder='big')
+                    line_bytes = line.encode()
+                    line_length = len(line_bytes)
+                    #line_length = len(line)
+                    assert(line_length<2048)
                     s.sendall(struct.pack("!i",line_length))
-                    s.sendall(line.encode())
-
+                    #s.sendall(line_length)
+                    s.sendall(line_bytes)
+   
 
                 # Invia una sequenza di lunghezza 0 per indicare la fine
                 s.sendall(struct.pack("!i",0))
