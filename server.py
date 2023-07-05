@@ -1,4 +1,6 @@
 #! /usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import subprocess, signal
 import os, struct,logging, argparse,socket
 import concurrent.futures, threading,errno
@@ -16,28 +18,28 @@ logging.basicConfig(filename= 'server.log',
 # Variabili globali con i nomi delle pipe da usare
 Pipesc = "caposc"
 Pipelet = "capolet"
- #se non esistono crea le pipe
+    #se non esistono crea le pipe
 if not os.path.exists(Pipelet):
     os.mkfifo(Pipelet)
 if not os.path.exists(Pipesc):
     os.mkfifo(Pipesc)
-#args = shlex.split(command_line)
 
-def write_to_pipe(fd, line):
-    os.write(fd, line)
+#def write_to_pipe(fd, line,length):
+#    os.write(fd,length)
+#    os.write(fd, line)
 
 def main(max):
-   
-  
 
    #apre le pipe in scrittura e lettura per non rendere la scrittura bloccante
+   fd1 = os.open(Pipelet,os.O_WRONLY)
+   fd2 = os.open(Pipesc,os.O_WRONLY)
    #fd1 = os.open(Pipesc,os.O_RDWR)
-   #fd2 = os.open(Pipelet,os.O_RDWR)
-
+   #fd2 = os.open(Pipesc,os.O_WRONLY | os.O_NONBLOCK)
 
   
    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     try:  
+      
       s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)            
       s.bind((HOST, PORT))
       s.listen()
@@ -54,40 +56,36 @@ def main(max):
           if tconn == "a":
           # l'esecuzione di submit non è bloccante
           # fino a quando ci sono thread liberi
-            executor.submit(gestisci_connessione, conn,addr,Pipesc)
+            executor.submit(gestisci_connessione, conn,addr,fd1)
             print('connessione tipo A')
           elif tconn == "b":
-            executor.submit(gestisci_connessione, conn,addr,Pipelet)
+            executor.submit(gestisci_connessione, conn,addr,fd2)
             print('connessione tipo B')
           else: print('connessione da client generico')
     except KeyboardInterrupt:
       print('Va bene smetto...')
+      os.close(fd1)
+      os.close(fd2)
       os.unlink(Pipesc)
       os.unlink(Pipelet)
       p.send_signal(signal.SIGTERM)
       s.shutdown(socket.SHUT_RDWR)
   
   # gestisci una singola connessione con un client
-def gestisci_connessione(conn,addr,Pipe):
-  fd = os.open(Pipe,os.O_RDWR)
-  # in questo caso potrei usare direttamente conn
-  # e l'uso di with serve solo a garantire che conn venga chiusa all'uscita del blocco
-  # ma in generale with esegue le necessarie inzializzazione e il clean-up finale
-  #inizializzato a 1 perche byte che mando per capire il tipo di connessione
+def gestisci_connessione(conn,addr,fd):
+ 
   tot=1
   with conn:  
     print(f"{threading.current_thread().name} contattato da {addr}")
-      # ---- invio un byte inutile (il codice ascii di x) 
-      #data = recv_all(conn,2)
-      #per i numeru python utilizza precisione a 28 bit, quindi max 4 byte
+     #per i numeri python utilizza precisione a 28 bit, quindi max 4 byte
     while True:  
-      data = conn.recv(4)
+      data = conn.recv(2)
       if not data:
-          print(f"{threading.current_thread().name} finito con {addr}")
+          #print(f"{threading.current_thread().name} finito con {addr}")
           logging.debug(f"Tipo A. Bytes {tot}")
           break
       
-      if(struct.unpack("!i",data)[0]==0):
+      if(struct.unpack("!h",data)[0]==0):
         line = conn.recv(1)
         if(line.decode()==""):
           print(f"{threading.current_thread().name} finito con {addr}")
@@ -95,15 +93,14 @@ def gestisci_connessione(conn,addr,Pipe):
           break
       
      # assert len(data)==2
-      lenght  = struct.unpack("!i",data)[0]      
+      lenght  = struct.unpack("!h",data)[0]      
       assert(lenght<2048)
-      tot+=(4+lenght)
+      tot+=(2+lenght)
       line = recv_all(conn,lenght)
-      #su quale pipe devo scrivere(?????????)
       #print(f"{line.decode()}")
-      #os.write(fd,line.encode()) 
-      threading.Thread(target=write_to_pipe, args=(fd, line)).start()    
-    os.close(fd)
+      os.write(fd,data)
+      os.write(fd,line)
+     # threading.Thread(target=write_to_pipe, args=(fd, line,data)).start() 
     
     
   
@@ -140,16 +137,15 @@ if __name__ == '__main__':
     p = subprocess.Popen(["valgrind","--leak-check=full", 
                       "--show-leak-kinds=all", 
                       "--log-file=valgrind-%p.log", 
-                      "archivio", str(args.r), str(args.w)])
+                      "./archivio", str(args.r), str(args.w)])
     print("Ho lanciato il processo:", p.pid)
   else:
     # esegui main come processo in background
-    p = subprocess.Popen(["./archivio", str(args.r), str(args.w)], stdout=subprocess.PIPE)    
+    p = subprocess.Popen(["./archivio", str(args.r), str(args.w)])    
     print("Ho lanciato il processo:", p.pid)
-    main(args.max)
-    for line in p.stdout:
-    # Stampa l'output del processo
-     print(line.decode().strip())
+  main(args.max)
+ # output, error = p.communicate()
+ # print(output)
 
-
+    
   

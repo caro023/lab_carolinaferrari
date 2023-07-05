@@ -10,14 +10,12 @@ PORT = 56515
 import socket
 
 def send_line(sock, line):
-    # Calcola la lunghezza della linea come intero a 32 bit e la invia al server
+    # Calcola la lunghezza della linea come intero a 16 bit e la invia al server
     line_bytes = line.encode()
     line_length = len(line_bytes)
     assert(line_length<2048)
-    sock.sendall(struct.pack("!i",line_length)) 
-   
+    sock.sendall(struct.pack("!h",line_length))    
     # Invia la linea al server
-    #sock.sendall(line.encode())
     sock.sendall(line_bytes)
 
 def main(file_name):
@@ -36,7 +34,6 @@ def main(file_name):
 
               # Invia le linee al server una alla volta
               for line in file:
-                 # assert(len(line)<2048)
                   send_line(s, line)
 
               # Chiude il socket

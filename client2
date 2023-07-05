@@ -4,6 +4,15 @@ PORT = 56515
 import socket, sys, struct
 import threading
 
+def send_line(sock, line):
+    # Calcola la lunghezza della linea come intero a 16 bit e la invia al server
+    line_bytes = line.encode()
+    line_length = len(line_bytes)
+    assert(line_length<2048)
+    sock.sendall(struct.pack("!h",line_length))    
+    # Invia la linea al server
+    sock.sendall(line_bytes)
+
 #inviano al server un numero imprecisato di sequenze di byte; quando il client ha inviato
 #  l'ultima sequenza esso segnala che non ce ne sono altre inviandone una di lunghezza 0. 
 # Il server deve scrivere ognuna di queste sequenze (tranne quella di lunghezza zero) nella FIFO `capos`.
@@ -23,17 +32,11 @@ def send_file(file_name):
 
                 # Invia le linee al server una alla volta precedute dalla lunghezza
                 for line in file:
-                    line_bytes = line.encode()
-                    line_length = len(line_bytes)
-                    #line_length = len(line)
-                    assert(line_length<2048)
-                    s.sendall(struct.pack("!i",line_length))
-                    #s.sendall(line_length)
-                    s.sendall(line_bytes)
+                    send_line(s, line)
    
 
                 # Invia una sequenza di lunghezza 0 per indicare la fine
-                s.sendall(struct.pack("!i",0))
+                s.sendall(struct.pack("!h",0))
                 s.sendall("".encode())
                 # Chiude il socket
                 s.shutdown(socket.SHUT_RDWR)
