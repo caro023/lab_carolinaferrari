@@ -119,7 +119,6 @@ void distruggi_entry(ENTRY *e)
     ENTRY *r = hsearch(*e,FIND);
     pthread_mutex_unlock(&mu);
     distruggi_entry(e);
-    printf("conta %d",*((int *) r->data));
     if(r==NULL) return 0;
     else return (*((int *) r->data));    
   }
@@ -204,7 +203,6 @@ void *Reader(void* arg) {
       pthread_mutex_lock(a->mutex_fd);
        fprintf(file,"%s %d \n", str, tot);
       pthread_mutex_unlock(a->mutex_fd);
-  
    } while(str!=NULL);
   free(str);
   free(a);
@@ -262,9 +260,9 @@ void* Capo(void* arg) {
       e = read(fd, token, length); //va messo &token???? NO è gia un puntatore
       if ((int)e != length)  
         termina("Errore nella lettura del carattere\n");
-      token[length + 1] = '\0'; 
+      token[length] = '\0'; 
       copy = strdup(token);
-      //free(token);
+     // free(token);
       printf(" stringa %s  \n",copy);
      // str = malloc(Max_sequence_length * sizeof(char));  
       str = strtok_r(copy, ".,:; \n\r\t",&saveprint); 
@@ -415,6 +413,7 @@ int main(int argc, char *argv[])
       return -1;
   }
   
+  
   //thread capo scrittore 
   capi cw;
   //pthread_t capoWrite;
@@ -519,7 +518,8 @@ int main(int argc, char *argv[])
   pthread_create(&gestore, NULL, &gbody,NULL);
 
   pthread_join(gestore, NULL);
-
+  free(rc);
+  free(wc);
 }
 
 

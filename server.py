@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import subprocess, signal
-import os, struct,logging, argparse,socket
+import os, struct,logging, argparse,socket,time
 import concurrent.futures, threading,errno
 
 HOST = "127.0.0.1"  
 PORT = 56515   
+lock = threading.Lock()
 
 # configurazione del 
 #va cambiata la configurazioen
@@ -98,8 +99,10 @@ def gestisci_connessione(conn,addr,fd):
       tot+=(2+lenght)
       line = recv_all(conn,lenght)
       #print(f"{line.decode()}")
+      lock.acquire()
       os.write(fd,data)
       os.write(fd,line)
+      lock.release()
      # threading.Thread(target=write_to_pipe, args=(fd, line,data)).start() 
     
     
