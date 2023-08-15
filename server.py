@@ -30,12 +30,10 @@ if not os.path.exists(Pipesc):
 #    os.write(fd, line)
 
 def main(max):
-
+   assert max>0, "Il numero di thread deve essere maggiore di 0"
    #apre le pipe in scrittura e lettura per non rendere la scrittura bloccante
    fd1 = os.open(Pipelet,os.O_WRONLY)
    fd2 = os.open(Pipesc,os.O_WRONLY)
-   #fd1 = os.open(Pipesc,os.O_RDWR)
-   #fd2 = os.open(Pipesc,os.O_WRONLY | os.O_NONBLOCK)
 
   
    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -44,7 +42,7 @@ def main(max):
       s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)            
       s.bind((HOST, PORT))
       s.listen()
-      assert max>0, "Il numero di thread deve essere maggiore di 0"
+      
       with concurrent.futures.ThreadPoolExecutor(max_workers=max) as executor:
         while True:
           print("In attesa di un client...")
@@ -66,12 +64,15 @@ def main(max):
     except KeyboardInterrupt:
       print('Va bene smetto...')
       os.close(fd1)
-      os.close(fd2)
+      os.close(fd2)      
       os.unlink(Pipesc)
       os.unlink(Pipelet)
       p.send_signal(signal.SIGTERM)
+      #p.terminate()
+      p.wait()
       s.shutdown(socket.SHUT_RDWR)
-  
+      s.close()
+    
   # gestisci una singola connessione con un client
 def gestisci_connessione(conn,addr,fd):
  
