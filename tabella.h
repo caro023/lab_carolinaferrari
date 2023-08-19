@@ -19,14 +19,18 @@
 #include <arpa/inet.h>
 #include <stdint.h>
 
-
-typedef struct {
+typedef struct{
   //servono per paradigma lettori scrittori
   int readers;
   int writing;
   pthread_cond_t *cond;   // condition variable
   pthread_mutex_t *mutex; // mutex associato alla condition variable
   pthread_mutex_t *ordering; //serve per dare fairness
+}hash;
+
+
+typedef struct {
+  hash access;
   //accesso al buffer 
   char **buffer;
   pthread_mutex_t *pmutex_buf;
@@ -62,16 +66,8 @@ void destroy(void);
 void rw_init(rw *z);
 
 
-
-//typedef struct dati *dati;
-//typedef struct rw *rw;
-//typedef struct capi *capi;
-
-//void rw_init(rw *z);
-//void pc_init(rw *z);
-
-void read_lock(rw *z);
-void read_unlock(rw *z);
-void write_lock(rw *z);
-void write_unlock(rw *z);
+void read_lock(hash *z);
+void read_unlock(hash *z);
+void write_lock(hash *z);
+void write_unlock(hash *z);
 #endif  // TABELLA_H

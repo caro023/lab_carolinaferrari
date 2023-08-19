@@ -25,10 +25,6 @@ if not os.path.exists(Pipelet):
 if not os.path.exists(Pipesc):
     os.mkfifo(Pipesc)
 
-#def write_to_pipe(fd, line,length):
-#    os.write(fd,length)
-#    os.write(fd, line)
-
 def main(max):
    assert max>0, "Il numero di thread deve essere maggiore di 0"
    #apre le pipe in scrittura e lettura per non rendere la scrittura bloccante
@@ -104,8 +100,7 @@ def gestisci_connessione(conn,addr,fd):
       os.write(fd,data)
       os.write(fd,line)
       lock.release()
-     # threading.Thread(target=write_to_pipe, args=(fd, line,data)).start() 
-    
+     
     
   
 

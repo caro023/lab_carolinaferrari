@@ -43,7 +43,6 @@ void distruggi_entry(ENTRY *e)
 
   // inserisce gli elementi sulla linea di comando
   void aggiungi (char *s) {
-    printf("aggiungi\n");
     ENTRY *e = entry(s, 1);
     pthread_mutex_lock(&mu);
     ENTRY *r = hsearch(*e,FIND);
@@ -78,7 +77,7 @@ void distruggi_entry(ENTRY *e)
 
 
 // inizio uso da parte di un reader
-void read_lock(rw *z)
+void read_lock(hash *z)
 {
   pthread_mutex_lock(z->ordering);  // coda di ingresso
   pthread_mutex_lock(z->mutex);
@@ -90,7 +89,7 @@ void read_lock(rw *z)
 }
 
 // fine uso da parte di un reader
-void read_unlock(rw *z)
+void read_unlock(hash *z)
 {
   assert(z->readers>0);  // ci deve essere almeno un reader (me stesso)
   assert(!z->writing);   // non ci devono essere writer 
@@ -104,7 +103,7 @@ void read_unlock(rw *z)
 /**************************************/
   
 // inizio uso da parte di writer  
-void write_lock(rw *z)
+void write_lock(hash *z)
 {
   pthread_mutex_lock(z->ordering);    // coda di ingresso
   pthread_mutex_lock(z->mutex);
@@ -118,7 +117,7 @@ void write_lock(rw *z)
 }
 
 // fine uso da parte di un writer
-void write_unlock(rw *z)
+void write_unlock(hash *z)
 {
   assert(z->writing>0);
   pthread_mutex_lock(z->mutex);
