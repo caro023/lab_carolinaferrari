@@ -58,9 +58,9 @@ def main(max):
             print('connessione tipo B')
           else: print('connessione da client generico')
     except KeyboardInterrupt:
-      print('Va bene smetto...')
+      print('Va bene smetto...') 
       os.close(fd1)
-      os.close(fd2)      
+      os.close(fd2) 
       os.unlink(Pipesc)
       os.unlink(Pipelet)
       p.send_signal(signal.SIGTERM)

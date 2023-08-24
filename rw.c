@@ -10,9 +10,13 @@ FILE* file;
 void *Reader(void* arg) {
   rw *a = ( rw *)arg;
   char* str =malloc(Max_sequence_length*sizeof(char));
-  int tot;
-  //accesso al buffer
-  do {
+  int tot;     
+   //creo file lettori.log
+    file = fopen("lettori.log", "w");
+    if (file == NULL) 
+        termina("Errore apertura file di log");  
+  while(str!=NULL){
+    //accesso al buffer
       sem_wait(a->sem_data_items);
       pthread_mutex_lock(a->pmutex_buf);
       str = (a->buffer[*(a->index) % PC_buffer_len]);
@@ -22,20 +26,22 @@ void *Reader(void* arg) {
 
       if(str==NULL) break;
     
+    //accesso tabella hash
       read_lock(&a->access);    
       tot = conta(str);
       read_unlock(&a->access);
       printf("%s %d \n", str, tot);
      
+    //scrittura sul file
       pthread_mutex_lock(a->mutex_fd);
-       int f = fprintf(file,"%s %d \n", str, tot);
-       if(f<0) printf("non ho scritto\n");
-       
+       fprintf(file,"%s %d \n", str, tot);       
       pthread_mutex_unlock(a->mutex_fd);
       fflush(file);
-   } while(str!=NULL);
+   }
   free(str);
   free(a);
+  printf("sono reader pre close file\n");
+  fclose(file);
   pthread_exit(NULL);
   return NULL;
 }
@@ -45,13 +51,11 @@ void *Reader(void* arg) {
 
 void *Writer(void* arg) {
     rw *a = ( rw *)arg;
-    char* str;//=malloc(Max_sequence_length*sizeof(char));
-      //creo file lettori.log
-    file = fopen("lettori.log", "w");
-    if (file == NULL) 
-        termina("Errore apertura file di log");
-    //accesso al buffer 
-    do {
+    char* str =malloc(Max_sequence_length*sizeof(char));
+
+    
+    while(str!=NULL){
+      //accesso al buffer 
       sem_wait(a->sem_data_items);
       pthread_mutex_lock(a->pmutex_buf);
       str = (a->buffer[*(a->index) % PC_buffer_len]);
@@ -59,67 +63,66 @@ void *Writer(void* arg) {
       pthread_mutex_unlock(a->pmutex_buf);
       sem_post(a->sem_free_slots);
       if(str==NULL) break;
+
+      //accesso tabella hash
       write_lock(&a->access);
       aggiungi(str);  
       write_unlock(&a->access);
 
-     // free(*str);
-    } while(str!=NULL);
+    } 
   free(str);
   free(a);
-  fclose(file);
+  
   pthread_exit(NULL);
+  return NULL;
 }
 
 /**************************************/
 
 void* Capo(void* arg) {
   capi *a = ( capi *)arg;
- /* int fd= open(a->pipeName,O_RDONLY);  
-  if (fd < 0) // se il file non esiste termina con errore
-    termina("Errore apertura named pipe");*/
     u_int16_t size;
     ssize_t e;
     char* copy;
-    char *str; //= malloc(Max_sequence_length * sizeof(char)); 
+    char *str;  
     char* saveprint; 
     
-
+    //lettura dalla named pipe
     while ((e = read(a->fd, &size, sizeof(u_int16_t))) > 0) {
-      if (e != (int) sizeof(u_int16_t)) 
-       termina("Errore nella lettura della lunghezza\n");
+      if (e != sizeof(u_int16_t)) 
+          termina("Errore nella lettura della lunghezza\n");
       u_int16_t length = ntohs(size);
-         
       char token[length+1];
-      e = read(a->fd, token, length); //va messo &token???? NO è gia un puntatore
-      if ((int)e != length)  
+      e = read(a->fd, token, length); 
+      if (e != length)  
         termina("Errore nella lettura del carattere\n");
       token[length] = '\0'; 
       copy = strdup(token);
-     // free(token);
       printf(" stringa %s  \n",copy);
-     // str = malloc(Max_sequence_length * sizeof(char));  
+     //tokenizzazione stringa 
       str = strtok_r(copy, ".,:; \n\r\t",&saveprint); 
       while (str != NULL) {
+        //accesso al buffer
         sem_wait(a->sem_free_slots);
         a->buffer[*(a->index) % PC_buffer_len] = strdup(str);
-      //  printf("%s stringa scritta\n",a->buffer[*(a->index) % PC_buffer_len]);
         *(a->index) +=1;
         sem_post(a->sem_data_items);        
         str = strtok_r(NULL, ".,:; \n\r\t",&saveprint); 
-      }     
+      } 
+      free(copy);   
     }
     free(saveprint);           
-    free(str);
-    free(copy);
+    free(str);    
   
   printf("ho finito");
+  //manda segnale di terminazione ai threads
   char* fine=NULL;
   for(int i=0;i<a->threads;i++) {
     sem_wait(a->sem_free_slots);
     a->buffer[*(a->index)++ % PC_buffer_len] = fine;
     sem_post(a->sem_data_items);
   }
+  //chiusura della pipe
   close(a->fd); 
   printf("CHIUSA PIPE"); 
   free(a);

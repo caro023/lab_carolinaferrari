@@ -6,12 +6,10 @@
 #define PORT 56515`// porta usata dal server dove `XXXX` sono le ultime quattro cifre del vostro numero di matricola. 
 #define Max_sequence_length 2048 //massima lunghezza di una sequenza che viene inviata attraverso un socket o pipe
 
+//variabile globale per il numero di elementi nella tabella hash
 static int n;
+//mutex per la ricerca di un elemento nella tabella
 pthread_mutex_t mu = PTHREAD_MUTEX_INITIALIZER;
-/*void handler(int s)
-{
-  printf("Segnale %d ricevuto dal processo %d\n", s, getpid());
-}*/
 // messaggio errore e stop
 void termina(const char *messaggio){
   if(errno!=0) perror(messaggio);
@@ -21,8 +19,7 @@ void termina(const char *messaggio){
 
 /**************************************/
 
-// crea un oggetto di tipo entry
-// con chiave s e valore n
+// crea un oggetto di tipo entry con chiave s e valore n
   ENTRY *entry(char *s, int n) {
   ENTRY *e = malloc(sizeof(ENTRY));
   if(e==NULL) termina("errore malloc entry 1");
@@ -41,7 +38,7 @@ void distruggi_entry(ENTRY *e)
 
 /*************************************/
 
-  // inserisce gli elementi sulla linea di comando
+  // inserisce gli elementi passati come argomento
   void aggiungi (char *s) {
     ENTRY *e = entry(s, 1);
     pthread_mutex_lock(&mu);
@@ -52,10 +49,11 @@ void distruggi_entry(ENTRY *e)
       r = hsearch(*e,ENTER);
       pthread_mutex_unlock(&mu);
       if(r==NULL) termina("errore o tabella piena");
+      //aggiorna il numero di elementi nella tabella
       n++;
     }
     else {
-      // la stringa è gia' presente incremento il valore
+      //la stringa è gia' presente incremento il valore
       assert(strcmp(e->key,r->key)==0);
       int *d = (int *) r->data;
       *d +=1;
@@ -82,7 +80,7 @@ void read_lock(hash *z)
   pthread_mutex_lock(z->ordering);  // coda di ingresso
   pthread_mutex_lock(z->mutex);
   while(z->writing>0)
-    pthread_cond_wait(z->cond, z->mutex);   // attende fine scrittura
+    pthread_cond_wait(z->cond, z->mutex);  // attende fine scrittura
   z->readers++;
   pthread_mutex_unlock(z->ordering); // faccio passare il prossimo se in coda
   pthread_mutex_unlock(z->mutex);
@@ -94,9 +92,9 @@ void read_unlock(hash *z)
   assert(z->readers>0);  // ci deve essere almeno un reader (me stesso)
   assert(!z->writing);   // non ci devono essere writer 
   pthread_mutex_lock(z->mutex);
-  z->readers--;                  // cambio di stato       
+  z->readers--;                  // aggiorno il numero dei readers       
   if(z->readers==0) 
-    pthread_cond_signal(z->cond); // da segnalare ad un solo writer
+    pthread_cond_signal(z->cond); //segnala a chi è in attesa
   pthread_mutex_unlock(z->mutex);
 }
 
@@ -107,28 +105,28 @@ void write_lock(hash *z)
 {
   pthread_mutex_lock(z->ordering);    // coda di ingresso
   pthread_mutex_lock(z->mutex);
-  while(z->writing>0 || z->readers>0)
-    // attende fine scrittura o lettura
-    pthread_cond_wait(z->cond, z->mutex);   
+  while(z->writing>0 || z->readers>0)    
+    pthread_cond_wait(z->cond, z->mutex);   // attende fine scrittura o lettura
   assert(z->writing==0);
   z->writing++;
-  pthread_mutex_unlock(z->ordering);
+  pthread_mutex_unlock(z->ordering); // faccio passare il prossimo se in coda
   pthread_mutex_unlock(z->mutex);
 }
 
 // fine uso da parte di un writer
 void write_unlock(hash *z)
 {
-  assert(z->writing>0);
+  assert(z->writing>0); // ci deve essere almeno un writer
   pthread_mutex_lock(z->mutex);
-  z->writing--;               // cambio stato
-  // segnala a tutti quelli in attesa 
-  pthread_cond_signal(z->cond);  
+  z->writing--;               // aggiorno numero dei writers
+  pthread_cond_signal(z->cond);  //segnala a chi è in attesa
   pthread_mutex_unlock(z->mutex);
 }
 
+// ritorna il numero di elementi della tabella hash
 int size() {return n;}
 
+//distrugge il mutex 
 void destroy(){
   pthread_mutex_destroy(&mu);
 }

@@ -6,15 +6,6 @@
 #define PC_buffer_len 10// lunghezza dei buffer produttori/consumatori
 #define PORT 56515// porta usata dal server dove `XXXX` sono le ultime quattro cifre del vostro numero di matricola. 
 #define Max_sequence_length 2048 //massima lunghezza di una sequenza che viene inviata attraverso un socket o pipe
-
-
-//pthread_t capoWrite;  // Puntatore al thread capo scrittore e lettore 
-//pthread_t capoRead; 
-//static int n=0;
-//FILE* file;
-//int fd1;
-//int fd2;
-
  
 
 /**************************************/
@@ -22,26 +13,24 @@
 
 void *gbody(void *arg) {
   // si mette in attesa di tutti i segnali
-  sigset_t mask;
-  sigfillset(&mask);
+   sigset_t *mask = (sigset_t *)arg;
+ 
   int s;
   while(true) {
-    int e = sigwait(&mask,&s);
+    printf("dentro il while del segnale\n");
+    int e = sigwait(mask,&s);
     if(e!=0) perror("Errore sigwait");
     printf("Thread gestore svegliato dal segnale %d\n",s);
-
+    
     if(s==SIGINT) {
       fprintf(stderr,"numero elementi nella tabella %d\n",size());
-    }
-    
+    }    
 
     if(s==SIGTERM) {  
       //close(fd1);
       //close(fd2);
-     // pthread_join(capoWrite, NULL);
-     // pthread_join(capoRead, NULL);
       fprintf(stdout,"numero elementi nella tabella %d\n",size());
-      printf("numero elementi nella tabella %d\n",size());
+     // printf("numero elementi nella tabella %d\n",size());
       hdestroy();
      // exit(0);
       pthread_exit(NULL);
@@ -64,35 +53,39 @@ int main(int argc, char *argv[])
   int ht = hcreate(Num_elem);
   if(ht==0 ) termina("Errore creazione HT");
 
-  //creo file lettori.log
- /* file = fopen("lettori.log", "w");
-  if (file == NULL) 
-        termina("Errore apertura file di log");*/
 
   int r = atoi(argv[1]);
   int w = atoi(argv[2]);
   assert(r>0);
   assert(w>0);
 
+
   char* rbuffer[10];
   char* wbuffer[10];
-  int rpindex=0, rcindex=0; //rp,wp index ai thread capi
+  //index per i thread capi
+  int rpindex=0, rcindex=0; 
+  //index per lettori scrittori
   int wpindex=0, wcindex=0;
+  //mutex per accesso al buffer
   pthread_mutex_t rmubuf = PTHREAD_MUTEX_INITIALIZER;
   pthread_mutex_t wmubuf = PTHREAD_MUTEX_INITIALIZER;
-  pthread_mutex_t fdmutex = PTHREAD_MUTEX_INITIALIZER; //mutex per accesso a file lettori.log
+  //mutex per accesso a file lettori.log
+  pthread_mutex_t fdmutex = PTHREAD_MUTEX_INITIALIZER; 
+  //semafori per accesso al buffer
   sem_t sem_free_slots1, sem_data_items1;
-  sem_init(&sem_free_slots1,0,PC_buffer_len);//mettere al posto di 256 pc_buf_len
+  sem_init(&sem_free_slots1,0,PC_buffer_len);
   sem_init(&sem_data_items1,0,0);
   sem_t sem_free_slots2, sem_data_items2;
   sem_init(&sem_free_slots2,0,PC_buffer_len);
   sem_init(&sem_data_items2,0,0);
+  //variabili per accesso tabella hash
   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
   pthread_mutex_t ordering = PTHREAD_MUTEX_INITIALIZER; 
   pthread_cond_t cond;
   pthread_cond_init(&cond,NULL);
 
-  pthread_t capoWrite;  // Puntatore al thread capo scrittore e lettore 
+  // Puntatore al thread capo scrittore e lettore 
+  pthread_t capoWrite; 
   pthread_t capoRead; 
 
   int fd1= open("capolet",O_RDONLY);
@@ -101,6 +94,7 @@ int main(int argc, char *argv[])
   int fd2= open("caposc",O_RDONLY);
   if (fd2 < 0) // se il file non esiste termina con errore
     termina("Errore apertura named pipe");
+
   //thread capo lettore
   capi cr;
   cr.buffer = rbuffer; 
@@ -143,7 +137,7 @@ int main(int argc, char *argv[])
   pthread_t read[r];    
   pthread_t write[w];
 
-  // creo tutti gli scrittori
+  // creo tutti i lettori
   for(int i=0;i<r;i++) {
    // faccio partire il thread i
     rc[i].access = init;
@@ -158,7 +152,7 @@ int main(int argc, char *argv[])
       return -1;
     }
   }
-  // creo tutti i letto
+  // creo tutti gli scrittori
   for(int i=0;i<w;i++) {
    // faccio partire il thread i
     wc[i].access = init;
@@ -172,18 +166,23 @@ int main(int argc, char *argv[])
       return -1;
     }
   }
-  sigset_t mask;
-  sigfillset(&mask);  // insieme di tutti i segnali
- // sigdelset(&mask,SIGQUIT); // elimino sigquit da mask
-  pthread_sigmask(SIG_BLOCK,&mask,NULL); // blocco tutto 
+
+  //creo la maschera per i segnali
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+    sigaddset(&mask, SIGTERM);
+    pthread_sigmask(SIG_BLOCK, &mask, NULL);
  
+  //thread dei segnali
   pthread_t gestore;
-  pthread_create(&gestore, NULL, &gbody,NULL);
+  pthread_create(&gestore, NULL, &gbody,&mask);
+
+  //join dei threads
 
   pthread_join(gestore, NULL);
-
   pthread_join(capoWrite, NULL);
-   pthread_join(capoRead, NULL);
+  pthread_join(capoRead, NULL);
 
   for(int i=0;i<r;i++) {
     pthread_join(read[i], NULL);
@@ -194,6 +193,8 @@ int main(int argc, char *argv[])
     pthread_join(write[i], NULL);
     printf("ho finito write");
   }
+
+  //libero la memoria
   pthread_mutex_destroy(&mutex);
   pthread_mutex_destroy(&ordering);
   pthread_mutex_destroy(&fdmutex);
