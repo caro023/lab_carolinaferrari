@@ -44,13 +44,11 @@ typedef struct {
 typedef struct {
   //accesso al buffer 
   char **buffer;
-  //pthread_mutex_t *pmutex_buf;
   sem_t *sem_free_slots;
   sem_t *sem_data_items;
   int *index;
   int threads;
   int fd;
-  char* pipeName;
 }capi;
 
 

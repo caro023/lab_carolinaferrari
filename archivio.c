@@ -88,6 +88,8 @@ int main(int argc, char *argv[])
   pthread_t capoWrite; 
   pthread_t capoRead; 
 
+
+  //apertura delle named pipe in lettura
   int fd1= open("capolet",O_RDONLY);
   if (fd1 < 0) // se il file non esiste termina con errore
     termina("Errore apertura named pipe");
@@ -101,7 +103,7 @@ int main(int argc, char *argv[])
   cr.index = &rpindex;
   cr.sem_data_items = &sem_data_items1; 
   cr.sem_free_slots = &sem_free_slots1;
-  cr.threads = r;//mettere numero di reader
+  cr.threads = r;//numero di reader
   cr.fd = fd1;
   if((pthread_create(&capoRead,NULL,Capo,&cr))!=0){
       fprintf(stderr, "pthread_create Reader failed\n");
@@ -115,7 +117,7 @@ int main(int argc, char *argv[])
   cw.sem_free_slots = &sem_free_slots2;
   cw.buffer = wbuffer;
   cw.index = &wpindex;
-  cw.threads = w;
+  cw.threads = w;//numero di writer
   cw.fd=fd2;
   if((pthread_create(&capoWrite,NULL,Capo,&cw))!=0){
       fprintf(stderr, "pthread_create Reader failed\n");
