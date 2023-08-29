@@ -7,6 +7,10 @@
 #define PORT 56515// porta usata dal server dove `XXXX` sono le ultime quattro cifre del vostro numero di matricola. 
 #define Max_sequence_length 2048 //massima lunghezza di una sequenza che viene inviata attraverso un socket o pipe
  
+FILE *file;
+  // Puntatore al thread capo scrittore e lettore 
+  pthread_t capoWrite; 
+  pthread_t capoRead; 
 
 /**************************************/
 
@@ -29,6 +33,9 @@ void *gbody(void *arg) {
     if(s==SIGTERM) {  
       //close(fd1);
       //close(fd2);
+      pthread_join(capoWrite, NULL);
+      pthread_join(capoRead, NULL);
+
       fprintf(stdout,"numero elementi nella tabella %d\n",size());
      // printf("numero elementi nella tabella %d\n",size());
       hdestroy();
@@ -53,6 +60,21 @@ int main(int argc, char *argv[])
   int ht = hcreate(Num_elem);
   if(ht==0 ) termina("Errore creazione HT");
 
+  //creo la maschera per i segnali
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+    sigaddset(&mask, SIGTERM);
+    pthread_sigmask(SIG_BLOCK, &mask, NULL);
+ 
+  //thread dei segnali
+  pthread_t gestore;
+  pthread_create(&gestore, NULL, &gbody,&mask);
+
+  //creo file lettori.log
+    file = fopen("lettori.log", "w");
+    if (file == NULL) 
+        termina("Errore apertura file di log");  
 
   int r = atoi(argv[1]);
   int w = atoi(argv[2]);
@@ -83,10 +105,6 @@ int main(int argc, char *argv[])
   pthread_mutex_t ordering = PTHREAD_MUTEX_INITIALIZER; 
   pthread_cond_t cond;
   pthread_cond_init(&cond,NULL);
-
-  // Puntatore al thread capo scrittore e lettore 
-  pthread_t capoWrite; 
-  pthread_t capoRead; 
 
 
   //apertura delle named pipe in lettura
@@ -149,6 +167,7 @@ int main(int argc, char *argv[])
     rc[i].buffer = rbuffer;  
     rc[i].pmutex_buf = &rmubuf;
     rc[i].mutex_fd = &fdmutex;
+    rc[i].file = file;
     if((pthread_create(&read[i],NULL,Reader,rc+i))!=0){
       fprintf(stderr, "pthread_create Reader failed\n");
       return -1;
@@ -169,27 +188,17 @@ int main(int argc, char *argv[])
     }
   }
 
-  //creo la maschera per i segnali
-    sigset_t mask;
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGINT);
-    sigaddset(&mask, SIGTERM);
-    pthread_sigmask(SIG_BLOCK, &mask, NULL);
- 
-  //thread dei segnali
-  pthread_t gestore;
-  pthread_create(&gestore, NULL, &gbody,&mask);
 
   //join dei threads
 
   pthread_join(gestore, NULL);
-  pthread_join(capoWrite, NULL);
-  pthread_join(capoRead, NULL);
 
   for(int i=0;i<r;i++) {
     pthread_join(read[i], NULL);
     printf("ho finito read");
   }
+
+  fclose(file);
 
   for(int i=0;i<w;i++) {
     pthread_join(write[i], NULL);

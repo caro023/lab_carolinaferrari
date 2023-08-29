@@ -39,6 +39,7 @@ typedef struct {
   int *index;
   //per lettori un mutex per il file 
   pthread_mutex_t *mutex_fd;
+  FILE *file;
 }rw;
 
 typedef struct {

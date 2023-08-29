@@ -11,10 +11,7 @@ void *Reader(void* arg) {
   rw *a = ( rw *)arg;
   char* str =malloc(Max_sequence_length*sizeof(char));
   int tot;     
-   //creo file lettori.log
-    file = fopen("lettori.log", "w");
-    if (file == NULL) 
-        termina("Errore apertura file di log");  
+ 
   while(str!=NULL){
     //accesso al buffer
       sem_wait(a->sem_data_items);
@@ -34,16 +31,14 @@ void *Reader(void* arg) {
      
     //scrittura sul file
       pthread_mutex_lock(a->mutex_fd);
-       fprintf(file,"%s %d \n", str, tot);       
+       fprintf(a->file,"%s %d \n", str, tot);       
       pthread_mutex_unlock(a->mutex_fd);
-      fflush(file);
+      fflush(a->file);
    }
   free(str);
-  free(a);
   printf("sono reader pre close file\n");
-  fclose(file);
+  
   pthread_exit(NULL);
-  return NULL;
 }
 
 /**************************************/
@@ -71,10 +66,8 @@ void *Writer(void* arg) {
 
     } 
   free(str);
-  free(a);
   
   pthread_exit(NULL);
-  return NULL;
 }
 
 /**************************************/
@@ -111,10 +104,10 @@ void* Capo(void* arg) {
       } 
       free(copy);   
     }
-    free(saveprint);           
+    //free(saveprint);           
     free(str);    
   
-  printf("ho finito");
+  printf("ho finito\n");
   //manda segnale di terminazione ai threads
   char* fine=NULL;
   for(int i=0;i<a->threads;i++) {
@@ -124,8 +117,7 @@ void* Capo(void* arg) {
   }
   //chiusura della pipe
   close(a->fd); 
-  printf("CHIUSA PIPE"); 
-  free(a);
+  printf("CHIUSA PIPE\n"); 
   pthread_exit(NULL);
 }
 
