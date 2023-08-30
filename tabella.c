@@ -8,8 +8,6 @@
 
 //variabile globale per il numero di elementi nella tabella hash
 static int n;
-//mutex per la ricerca di un elemento nella tabella
-pthread_mutex_t mu = PTHREAD_MUTEX_INITIALIZER;
 // messaggio errore e stop
 void termina(const char *messaggio){
   if(errno!=0) perror(messaggio);
@@ -41,13 +39,9 @@ void distruggi_entry(ENTRY *e)
   // inserisce gli elementi passati come argomento
   void aggiungi (char *s) {
     ENTRY *e = entry(s, 1);
-    pthread_mutex_lock(&mu);
     ENTRY *r = hsearch(*e,FIND);
-    pthread_mutex_unlock(&mu);
     if(r==NULL) { // la entry è nuova
-      pthread_mutex_lock(&mu);
       r = hsearch(*e,ENTER);
-      pthread_mutex_unlock(&mu);
       if(r==NULL) termina("errore o tabella piena");
       //aggiorna il numero di elementi nella tabella
       n++;
@@ -63,11 +57,9 @@ void distruggi_entry(ENTRY *e)
 
 /**************************************/
  // ritorna il valore associato alla stringa se presente, sennò 0
-  int conta(char *s) {
+  int conta(char *s) {   
     ENTRY *e = entry(s, 1);
-    pthread_mutex_lock(&mu);
     ENTRY *r = hsearch(*e,FIND);
-    pthread_mutex_unlock(&mu);
     distruggi_entry(e);
     if(r==NULL) return 0;
     else return (*((int *) r->data));    
@@ -125,11 +117,6 @@ void write_unlock(hash *z)
 
 // ritorna il numero di elementi della tabella hash
 int size() {return n;}
-
-//distrugge il mutex 
-void destroy(){
-  pthread_mutex_destroy(&mu);
-}
 
 /**************************************/
 

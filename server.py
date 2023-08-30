@@ -64,8 +64,6 @@ def main(max):
       os.unlink(Pipesc)
       os.unlink(Pipelet)
       p.send_signal(signal.SIGTERM)
-      #p.terminate()
-      p.wait()
       s.shutdown(socket.SHUT_RDWR)
       s.close()
     

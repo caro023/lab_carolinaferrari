@@ -1,5 +1,6 @@
 #include "tabella.h"
 #include "rw.h"
+#include "buffer.h"
 
 
 #define Num_elem 1000000 //dimensione della tabella hash 
@@ -31,20 +32,14 @@ void *gbody(void *arg) {
     }    
 
     if(s==SIGTERM) {  
-      //close(fd1);
-      //close(fd2);
       pthread_join(capoWrite, NULL);
       pthread_join(capoRead, NULL);
-
       fprintf(stdout,"numero elementi nella tabella %d\n",size());
-     // printf("numero elementi nella tabella %d\n",size());
       hdestroy();
-     // exit(0);
       pthread_exit(NULL);
     } 
-  }
-  
-  return NULL;
+  }  
+ // return NULL;
 }
 
 /**************************************/
@@ -72,9 +67,9 @@ int main(int argc, char *argv[])
   pthread_create(&gestore, NULL, &gbody,&mask);
 
   //creo file lettori.log
-    file = fopen("lettori.log", "w");
-    if (file == NULL) 
-        termina("Errore apertura file di log");  
+  file = fopen("lettori.log", "w");
+  if (file == NULL) 
+      termina("Errore apertura file di log");  
 
   int r = atoi(argv[1]);
   int w = atoi(argv[2]);
@@ -115,26 +110,40 @@ int main(int argc, char *argv[])
   if (fd2 < 0) // se il file non esiste termina con errore
     termina("Errore apertura named pipe");
 
+  capo_buffer read_c;
+  read_c.buffer = rbuffer; 
+  read_c.index = &rpindex;
+  read_c.sem_data_items = &sem_data_items1; 
+  read_c.sem_free_slots = &sem_free_slots1;
+
+  capo_buffer write_c;
+  write_c.sem_data_items = &sem_data_items2; 
+  write_c.sem_free_slots = &sem_free_slots2;
+  write_c.buffer = wbuffer;
+  write_c.index = &wpindex;
+
+
   //thread capo lettore
   capi cr;
-  cr.buffer = rbuffer; 
+ /* cr.buffer = rbuffer; 
   cr.index = &rpindex;
   cr.sem_data_items = &sem_data_items1; 
-  cr.sem_free_slots = &sem_free_slots1;
+  cr.sem_free_slots = &sem_free_slots1;*/
+  cr.buf = read_c;
   cr.threads = r;//numero di reader
   cr.fd = fd1;
   if((pthread_create(&capoRead,NULL,Capo,&cr))!=0){
       fprintf(stderr, "pthread_create Reader failed\n");
       return -1;
-  }
-  
+  }  
   
   //thread capo scrittore 
   capi cw;
-  cw.sem_data_items = &sem_data_items2; 
+  /*cw.sem_data_items = &sem_data_items2; 
   cw.sem_free_slots = &sem_free_slots2;
   cw.buffer = wbuffer;
-  cw.index = &wpindex;
+  cw.index = &wpindex;*/
+  cw.buf = write_c;
   cw.threads = w;//numero di writer
   cw.fd=fd2;
   if((pthread_create(&capoWrite,NULL,Capo,&cw))!=0){
@@ -149,7 +158,15 @@ int main(int argc, char *argv[])
   init.mutex = &mutex;
   init.ordering = &ordering;
 
-  
+  write_c.index=&wcindex;
+  buffer buffer_w;
+  buffer_w.buf_c = &write_c;
+  buffer_w.pmutex_buf = &wmubuf;
+
+  read_c.index = &rcindex;  
+  buffer buffer_r;
+  buffer_r.buf_c = &read_c;
+  buffer_r.pmutex_buf = &rmubuf;
 
   //thread scrittori e lettori
   rw rc[r];
@@ -161,11 +178,12 @@ int main(int argc, char *argv[])
   for(int i=0;i<r;i++) {
    // faccio partire il thread i
     rc[i].access = init;
-    rc[i].sem_data_items = &sem_data_items1; //funzione pc_init
+    /*rc[i].pmutex_buf = &rmubuf; rc[i].sem_data_items = &sem_data_items1; //funzione pc_init
     rc[i].sem_free_slots = &sem_free_slots1;
     rc[i].index = &rcindex;
     rc[i].buffer = rbuffer;  
-    rc[i].pmutex_buf = &rmubuf;
+    rc[i].pmutex_buf = &rmubuf;*/
+    rc[i].buf = buffer_r;
     rc[i].mutex_fd = &fdmutex;
     rc[i].file = file;
     if((pthread_create(&read[i],NULL,Reader,rc+i))!=0){
@@ -177,11 +195,12 @@ int main(int argc, char *argv[])
   for(int i=0;i<w;i++) {
    // faccio partire il thread i
     wc[i].access = init;
-    wc[i].sem_data_items = &sem_data_items2; //funzione pc_init
+   /* wc[i].sem_data_items = &sem_data_items2; //funzione pc_init
     wc[i].sem_free_slots = &sem_free_slots2;
     wc[i].index = &wcindex;
-    wc[i].buffer = wbuffer;  
-    wc[i].pmutex_buf = &wmubuf;
+    wc[i].buffer = wbuffer;      
+    wc[i].pmutex_buf = &wmubuf;*/
+    wc[i].buf = buffer_w;
     if((pthread_create(&write[i],NULL,Writer,wc+i))!=0){
       fprintf(stderr, "pthread_create Writer failed\n");
       return -1;
@@ -193,17 +212,22 @@ int main(int argc, char *argv[])
 
   pthread_join(gestore, NULL);
 
-  for(int i=0;i<r;i++) {
-    pthread_join(read[i], NULL);
-    printf("ho finito read");
-  }
-
-  fclose(file);
-
   for(int i=0;i<w;i++) {
     pthread_join(write[i], NULL);
-    printf("ho finito write");
+    printf("ho finito write\n");
   }
+  
+  printf("ho chiuso il file\n");
+  fclose(file);
+
+  for(int i=0;i<r;i++) {
+    pthread_join(read[i], NULL);
+    printf("ho finito read\n");
+  }
+
+  
+
+  
 
   //libero la memoria
   pthread_mutex_destroy(&mutex);
@@ -211,7 +235,7 @@ int main(int argc, char *argv[])
   pthread_mutex_destroy(&fdmutex);
   pthread_mutex_destroy(&rmubuf);
   pthread_mutex_destroy(&wmubuf);
-  destroy();
+  //destroy();
   pthread_cond_destroy(&cond);
   sem_destroy(&sem_free_slots1);  
   sem_destroy(&sem_free_slots2); 
@@ -220,8 +244,8 @@ int main(int argc, char *argv[])
   free(*rbuffer);
   free(*wbuffer);
 
-  free(rc);
-  free(wc);
+ // free(rc);
+ // free(wc);
 }
 
 

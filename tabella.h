@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <stdint.h>
+#include "buffer.h"
 
 typedef struct{
   //servono per paradigma lettori scrittori
@@ -31,23 +32,14 @@ typedef struct{
 
 typedef struct {
   hash access;
-  //accesso al buffer 
-  char **buffer;
-  pthread_mutex_t *pmutex_buf;
-  sem_t *sem_free_slots;
-  sem_t *sem_data_items;
-  int *index;
+  buffer buf;
   //per lettori un mutex per il file 
   pthread_mutex_t *mutex_fd;
   FILE *file;
 }rw;
 
 typedef struct {
-  //accesso al buffer 
-  char **buffer;
-  sem_t *sem_free_slots;
-  sem_t *sem_data_items;
-  int *index;
+  capo_buffer buf;
   int threads;
   int fd;
 }capi;
@@ -61,8 +53,6 @@ void distruggi_entry(ENTRY *e);
 void aggiungi (char *s);
 int conta(char *s);
 int size(void);
-void destroy(void);
-void rw_init(rw *z);
 
 
 void read_lock(hash *z);

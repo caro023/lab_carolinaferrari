@@ -15,7 +15,7 @@ LDLIBS=-lm -lrt -pthread
 #	rm -f *.o $(EXECS)
 
 
-SRCS = archivio.c tabella.c rw.c
+SRCS = archivio.c tabella.c rw.c buffer.c
 OBJS = $(SRCS:.c=.o)
 TARGET = archivio
 
