@@ -2,7 +2,7 @@
 #define PC_buffer_len 10
 
 char* get(buffer *z){
-    char* str;
+    char* str = NULL;
     capo_buffer *a = ( capo_buffer*)z->buf_c;
     //accesso al buffer
       sem_wait(a->sem_data_items);
@@ -16,13 +16,7 @@ char* get(buffer *z){
 
 void put(capo_buffer *a,char *str){
     sem_wait(a->sem_free_slots);
-    a->buffer[*(a->index) % PC_buffer_len] = strdup(str);
-    *(a->index) +=1;
-    sem_post(a->sem_data_items);
-}
-
-void last_put(capo_buffer *a,char *str){
-    sem_wait(a->sem_free_slots);
     a->buffer[*(a->index) % PC_buffer_len] = str;
+    *(a->index) +=1;
     sem_post(a->sem_data_items);
 }

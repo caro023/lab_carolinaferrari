@@ -1,13 +1,9 @@
 
 #include "tabella.h"
 
-#define Num_elem 1000000 //dimensione della tabella hash 
-#define PC_buffer_len 10// lunghezza dei buffer produttori/consumatori
-#define PORT 56515`// porta usata dal server dove `XXXX` sono le ultime quattro cifre del vostro numero di matricola. 
-#define Max_sequence_length 2048 //massima lunghezza di una sequenza che viene inviata attraverso un socket o pipe
-
 //variabile globale per il numero di elementi nella tabella hash
 static int n;
+
 // messaggio errore e stop
 void termina(const char *messaggio){
   if(errno!=0) perror(messaggio);

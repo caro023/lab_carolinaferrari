@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import subprocess, signal
-import os, struct,logging, argparse,socket,time
-import concurrent.futures, threading,errno
+import os, struct,logging, argparse,socket
+import concurrent.futures, threading
 
 HOST = "127.0.0.1"  
 PORT = 56515   
@@ -30,11 +30,9 @@ def main(max):
    #apre le pipe in scrittura e lettura per non rendere la scrittura bloccante
    fd1 = os.open(Pipelet,os.O_WRONLY)
    fd2 = os.open(Pipesc,os.O_WRONLY)
-
   
    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    try:  
-      
+    try:        
       s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)            
       s.bind((HOST, PORT))
       s.listen()
@@ -58,7 +56,7 @@ def main(max):
             print('connessione tipo B')
           else: print('connessione da client generico')
     except KeyboardInterrupt:
-      print('Va bene smetto...') 
+      print('chiusura del server') 
       os.close(fd1)
       os.close(fd2) 
       os.unlink(Pipesc)
@@ -68,23 +66,19 @@ def main(max):
       s.close()
     
   # gestisci una singola connessione con un client
-def gestisci_connessione(conn,addr,fd):
- 
+def gestisci_connessione(conn,addr,fd): 
   tot=1
   with conn:  
     print(f"{threading.current_thread().name} contattato da {addr}")
-     #per i numeri python utilizza precisione a 28 bit, quindi max 4 byte
     while True:  
       data = conn.recv(2)
       if not data:
-          #print(f"{threading.current_thread().name} finito con {addr}")
           logging.debug(f"Tipo A. Bytes {tot}")
           break
       
       if(struct.unpack("!h",data)[0]==0):
         line = conn.recv(1)
         if(line.decode()==""):
-          print(f"{threading.current_thread().name} finito con {addr}")
           logging.debug(f"Tipo B. Bytes {tot}")
           break
       
@@ -93,12 +87,10 @@ def gestisci_connessione(conn,addr,fd):
       assert(lenght<2048)
       tot+=(2+lenght)
       line = recv_all(conn,lenght)
-      #print(f"{line.decode()}")
       lock.acquire()
       os.write(fd,data)
       os.write(fd,line)
-      lock.release()
-     
+      lock.release()     
     
   
 
@@ -133,7 +125,7 @@ if __name__ == '__main__':
     # esegue il main in background con valgrind
     p = subprocess.Popen(["valgrind","--leak-check=full", 
                       "--show-leak-kinds=all", 
-                      "--log-file=valgrind-%p.log", 
+                      "--log-file=valgrind-%p.log",
                       "./archivio", str(args.r), str(args.w)])
     print("Ho lanciato il processo:", p.pid)
   else:

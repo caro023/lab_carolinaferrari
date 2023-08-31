@@ -17,7 +17,6 @@ typedef struct {
 
 char* get(buffer *a);
 void put(capo_buffer *a,char *str);
-void last_put(capo_buffer *a,char *str);
 
 
 #endif  // BUFFER_H
