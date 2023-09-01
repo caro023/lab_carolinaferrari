@@ -1,23 +1,20 @@
 #ifndef TABELLA_H
 #define TABELLA_H
 
-#define _GNU_SOURCE         // See feature_test_macros(7) 
-#include <stdio.h>    // permette di usare scanf printf etc ...
-#include <stdlib.h>   // conversioni stringa/numero exit() etc ...
-#include <stdbool.h>  // gestisce tipo bool (variabili booleane)
-#include <assert.h>   // permette di usare la funzione assert
-#include <string.h>   // confronto/copia/etc di stringhe
+#define _GNU_SOURCE      
+#include <stdio.h>    
+#include <stdlib.h>   
+#include <assert.h>  
+#include <string.h>  
 #include <errno.h>
 #include <search.h>
-#include <signal.h>
-#include <unistd.h>  // per sleep 
+#include <signal.h>  
+#include <unistd.h>  
 #include <semaphore.h>
-#include <pthread.h>
-#include <fcntl.h>  
-#include <sys/stat.h>  
-#include <sys/types.h>
+#include <pthread.h> 
+#include <fcntl.h>   
 #include <arpa/inet.h>
-#include <stdint.h>
+#include <stdint.h> 
 #include "buffer.h"
 
 typedef struct{
@@ -28,21 +25,6 @@ typedef struct{
   pthread_mutex_t *mutex; // mutex associato alla condition variable
   pthread_mutex_t *ordering; //serve per dare fairness
 }hash;
-
-
-typedef struct {
-  hash access;
-  buffer buf;
-  //per lettori un mutex per il file 
-  pthread_mutex_t *mutex_fd;
-  FILE *file;
-}rw;
-
-typedef struct {
-  capo_buffer buf;
-  int threads;
-  int fd;
-}capi;
 
 
 void termina(const char *s); 

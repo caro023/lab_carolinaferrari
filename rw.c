@@ -1,5 +1,6 @@
 #include "tabella.h"
 #include "buffer.h"
+#include "rw.h"
 
 #define Max_sequence_length 2048 //massima lunghezza di una sequenza che viene inviata attraverso un socket o pipe
 

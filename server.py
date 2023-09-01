@@ -8,9 +8,8 @@ import concurrent.futures, threading
 HOST = "127.0.0.1"  
 PORT = 56515   
 lock = threading.Lock()
+Max_sequence_length = 2048
 
-# configurazione del 
-#va cambiata la configurazioen
 logging.basicConfig(filename= 'server.log',
                     level=logging.DEBUG, datefmt='%d/%m/%y %H:%M:%S',
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -19,7 +18,7 @@ logging.basicConfig(filename= 'server.log',
 # Variabili globali con i nomi delle pipe da usare
 Pipesc = "caposc"
 Pipelet = "capolet"
-    #se non esistono crea le pipe
+#se non esistono crea le pipe
 if not os.path.exists(Pipelet):
     os.mkfifo(Pipelet)
 if not os.path.exists(Pipesc):
@@ -27,28 +26,27 @@ if not os.path.exists(Pipesc):
 
 def main(max):
    assert max>0, "Il numero di thread deve essere maggiore di 0"
-   #apre le pipe in scrittura e lettura per non rendere la scrittura bloccante
+   #apre le FIFO in scrittura
    fd1 = os.open(Pipelet,os.O_WRONLY)
    fd2 = os.open(Pipesc,os.O_WRONLY)
-  
+
+   #apertura del socket  
    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    try:        
+    try:
+      #permette di riutilizzare la stessa porta        
       s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)            
       s.bind((HOST, PORT))
       s.listen()
       
       with concurrent.futures.ThreadPoolExecutor(max_workers=max) as executor:
         while True:
-          print("In attesa di un client...")
-          #deve scrivere tipo di connessione e num byte
           # mi metto in attesa di una connessione
+          print("In attesa di un client...")
+          #il client deve scrivere il tipo di connessione         
           conn, addr = s.accept()
-          #data = recv_all(conn,1)
           data = conn.recv(1)
           tconn = data.decode()
           if tconn == "a":
-          # l'esecuzione di submit non è bloccante
-          # fino a quando ci sono thread liberi
             executor.submit(gestisci_connessione, conn,addr,fd1)
             print('connessione tipo A')
           elif tconn == "b":
@@ -69,7 +67,6 @@ def main(max):
 def gestisci_connessione(conn,addr,fd): 
   tot=1
   with conn:  
-    print(f"{threading.current_thread().name} contattato da {addr}")
     while True:  
       data = conn.recv(2)
       if not data:
@@ -82,9 +79,9 @@ def gestisci_connessione(conn,addr,fd):
           logging.debug(f"Tipo B. Bytes {tot}")
           break
       
-     # assert len(data)==2
+     
       lenght  = struct.unpack("!h",data)[0]      
-      assert(lenght<2048)
+      assert(lenght<Max_sequence_length)
       tot+=(2+lenght)
       line = recv_all(conn,lenght)
       lock.acquire()
@@ -94,9 +91,6 @@ def gestisci_connessione(conn,addr,fd):
     
   
 
-# riceve esattamente n byte e li restituisce in un array di byte
-# il tipo restituto è "bytes": una sequenza immutabile di valori 0-255
-# analoga alla readn che abbiamo visto nel C
 def recv_all(conn,n):
   chunks = b''
   bytes_recd = 0
@@ -111,8 +105,6 @@ def recv_all(conn,n):
  
 
 
-# questo codice viene eseguito solo se il file è eseguito direttamente
-# e non importato come modulo con import da un altro file
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description="server ",formatter_class=argparse.RawTextHelpFormatter)
   parser.add_argument("max", help="max number of thread", type=int)
@@ -133,8 +125,6 @@ if __name__ == '__main__':
     p = subprocess.Popen(["./archivio", str(args.r), str(args.w)])    
     print("Ho lanciato il processo:", p.pid)
   main(args.max)
- # output, error = p.communicate()
- # print(output)
 
     
   

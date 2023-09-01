@@ -188,10 +188,7 @@ int main(int argc, char *argv[])
 
 
   //join del thread gestore
-  pthread_join(gestore, NULL);
-
-  //chiusura del file
-  fclose(file);
+  pthread_join(gestore, NULL);  
 
   //join reader e writer
   for(int i=0;i<w;i++) {
@@ -201,6 +198,9 @@ int main(int argc, char *argv[])
   for(int i=0;i<r;i++) {
     pthread_join(read[i], NULL);
   }  
+  
+  //chiusura del file
+  fclose(file);
 
   //libero la memoria
   pthread_mutex_destroy(&mutex);

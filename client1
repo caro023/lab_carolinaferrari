@@ -6,10 +6,8 @@ HOST = "127.0.0.1"
 PORT = 56515  
 Max_sequence_length = 2048
 
-# **Tipo A**: inviano al server una singola sequenza di byte. Il server deve scrivere tale sequenza nella FIFO `capolet`
-
 def send_line(sock, line):
-    # Calcola la lunghezza della linea come intero a 16 bit e la invia al server
+    # Calcola la lunghezza della linea e la invia al server
     line_bytes = line.encode()
     line_length = len(line_bytes)
     assert(line_length<Max_sequence_length)
@@ -23,26 +21,20 @@ def main(file_name):
         # Apre il file di testo
         with open(file_name, 'r') as file:
             # Crea il socket TCP
-
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+              #si connette con il server
               s.connect((HOST, PORT))
 
               msg = "a"  
               # converte il messaggio in sequenza di byte
               s.sendall(msg.encode())
 
-              # Invia le linee al server una alla volta
+              # Invia le linee al server una alla volta precedute dalla lunghezza
               for line in file:
                   send_line(s, line)
 
               # Chiude il socket
               s.shutdown(socket.SHUT_RDWR)
-
-            # all'uscita dal blocco with viene eseguito s.close()
-            # ma per uscire in maniera più pulita dobbiamo
-            # usare prima anche shutdown()
-            # SHUT_RDWR indica che terminiamo sia lettura che scrittura     
-            # s.shutdown(socket.SHUT_RDWR)
 
         print("Invio completato.")
 

@@ -8,7 +8,7 @@ lock = threading.Lock()
 Max_sequence_length = 2048
 
 def send_line(sock, line):
-    # Calcola la lunghezza della linea come intero a 16 bit e la invia al server
+    # Calcola la lunghezza della linea e la invia al server
     line_bytes = line.encode()
     line_length = len(line_bytes)
     assert(line_length<Max_sequence_length)
@@ -18,17 +18,15 @@ def send_line(sock, line):
     sock.sendall(line_bytes)
     lock.release()
 
-#inviano al server un numero imprecisato di sequenze di byte; quando il client ha inviato
-#  l'ultima sequenza esso segnala che non ce ne sono altre inviandone una di lunghezza 0. 
-# Il server deve scrivere ognuna di queste sequenze (tranne quella di lunghezza zero) nella FIFO `capos`.
 
 def send_file(file_name):
 
     try:
         # Apre il file di testo
         with open(file_name, 'r') as file:
-
+            # Crea il socket TCP
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                #si connette con il server
                 s.connect((HOST, PORT))
 
                 msg = "b"  
