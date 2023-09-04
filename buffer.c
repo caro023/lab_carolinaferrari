@@ -1,7 +1,7 @@
 #include "tabella.h"
-#define PC_buffer_len 10
 
-char* get(buffer *z){
+
+char* get(buffer *z) {
     char* str = NULL;
     capo_buffer *a = ( capo_buffer*)z->buf_c;
     //accesso al buffer
@@ -14,7 +14,7 @@ char* get(buffer *z){
     return str;
   }
 
-void put(capo_buffer *a,char *str){
+void put(capo_buffer *a,char *str) {
     sem_wait(a->sem_free_slots);
     a->buffer[*(a->index) % PC_buffer_len] = str;
     *(a->index) +=1;

@@ -26,7 +26,7 @@ Infine inviano una sequenza di lunghezza 0 per segnalare la fine della connessio
 
 ### Server
 
-Il server, usando il modulo logging, crea un file "server.log" di livello DEBUG in cui scrive i vari tipi di connessione, l'ora e il giorno in cui sono avvenute e il numero di bytes scritti nelle named pipe 'capolet' e 'caposc' che vengono create se non sono già presenti.
+Il server, usando il modulo logging, crea un file "server.log" di livello DEBUG in cui scrive i vari tipi di connessione, l'ora, il giorno in cui sono avvenute e il numero di bytes scritti nelle named pipe 'capolet' e 'caposc' che vengono create se non sono già presenti.
 
 Con il modulo argparse gestisce gli argomenti passati dalla linea di comando. Richiede come argomento obbligatorio il numero massimo di threads che il server può utilizzare contemporaneamente. 
 Prima di avviare il main lancia come sottoprocesso il programma archivio, con valgrind se specificato  attraverso l'opzione '-v', e passando due paramentri opzionali, con valore di default 3, -r e -w rispettivamente il numero di threds lettori e scrittori. 

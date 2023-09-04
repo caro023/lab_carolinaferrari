@@ -4,6 +4,8 @@
 
 #define Max_sequence_length 2048 //massima lunghezza di una sequenza che viene inviata attraverso un socket o pipe
 
+
+
 FILE* file;
 void *Reader(void* arg) {
   rw *a = ( rw *)arg;
@@ -13,25 +15,24 @@ void *Reader(void* arg) {
   int tot;  
   while(str!=NULL){ 
     //accesso tabella hash
-      read_lock(&a->access);    
-      tot = conta(str);
-      read_unlock(&a->access);
+    read_lock(&a->access);    
+    tot = conta(str);
+    read_unlock(&a->access);
     //scrittura sul file
-      pthread_mutex_lock(a->mutex_fd);
-       fprintf(a->file,"%s %d \n", str, tot);       
-      pthread_mutex_unlock(a->mutex_fd);
-      free(str);
-      //accesso al buffer
-      str= get(&a->buf);
+    pthread_mutex_lock(a->mutex_fd);
+    fprintf(a->file,"%s %d \n", str, tot);       
+    pthread_mutex_unlock(a->mutex_fd);
+    free(str);
+    //accesso al buffer
+    str= get(&a->buf);
    }
   pthread_exit(NULL);
 }
 
-/**************************************/
 
 
 void *Writer(void* arg) {
-    rw *a = ( rw *)arg;
+    rw *a = ( rw *)arg; 
     char* str; 
     //accesso al buffer
     str = get(&a->buf);
@@ -42,12 +43,12 @@ void *Writer(void* arg) {
       write_unlock(&a->access);
       free(str);
       //accesso al buffer
-     str= get(&a->buf);
+      str= get(&a->buf);
     } 
   pthread_exit(NULL);
 }
 
-/**************************************/
+
 
 void* Capo(void* arg) {
   capi *a = ( capi *)arg;
@@ -70,7 +71,7 @@ void* Capo(void* arg) {
         termina("Errore nella lettura del carattere\n");
       token[length] = '\0'; 
       copy = strdup(token);
-     //tokenizzazione stringa 
+      //tokenizzazione stringa 
       str = strtok_r(copy, ".,:; \n\r\t",&saveprint); 
       while (str != NULL) {
         //accesso al buffer 
@@ -91,5 +92,3 @@ void* Capo(void* arg) {
 }
 
 
-
-/**************************************/

@@ -10,12 +10,15 @@
 #include <search.h>
 #include <signal.h>  
 #include <unistd.h>  
+#include <stdbool.h>
 #include <semaphore.h>
 #include <pthread.h> 
 #include <fcntl.h>   
 #include <arpa/inet.h>
 #include <stdint.h> 
 #include "buffer.h"
+
+#define PC_buffer_len 10// lunghezza dei buffer produttori/consumatori
 
 typedef struct{
   //servono per paradigma lettori scrittori

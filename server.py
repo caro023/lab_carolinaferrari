@@ -12,7 +12,7 @@ Max_sequence_length = 2048
 
 logging.basicConfig(filename= 'server.log',
                     level=logging.DEBUG, datefmt='%d/%m/%y %H:%M:%S',
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+                    format='%(asctime)s - %(message)s')
 
 
 # Variabili globali con i nomi delle pipe da usare

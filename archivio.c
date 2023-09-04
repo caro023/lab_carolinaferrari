@@ -4,23 +4,21 @@
 
 
 #define Num_elem 1000000 //dimensione della tabella hash 
-#define PC_buffer_len 10// lunghezza dei buffer produttori/consumatori
 
 FILE *file;
-  // Puntatore al thread capo scrittore e lettore 
-  pthread_t capoWrite; 
-  pthread_t capoRead; 
-
-/**************************************/
+// Puntatore al thread capo scrittore e lettore 
+pthread_t capoWrite; 
+pthread_t capoRead; 
 
 
 void *gbody(void *arg) {
   // si mette in attesa di tutti i segnali
-   sigset_t *mask = (sigset_t *)arg;
- 
+  sigset_t mask;
+  sigfillset(&mask);
   int s;
+  //attende l'arrivo di un segnale 
   while(true) {
-    int e = sigwait(mask,&s);
+    int e = sigwait(&mask,&s);
     if(e!=0) perror("Errore sigwait");
     printf("Thread gestore svegliato dal segnale %d\n",s);
     
@@ -36,13 +34,12 @@ void *gbody(void *arg) {
       pthread_exit(NULL);
     } 
   }  
- // return NULL;
 }
 
-/**************************************/
 
-int main(int argc, char *argv[])
-{ 
+
+int main(int argc, char *argv[]) { 
+
   if(argc!=3) {
     printf("errore parametri");
     exit(1);
@@ -50,30 +47,30 @@ int main(int argc, char *argv[])
 
   // crea tabella hash
   int ht = hcreate(Num_elem);
-  if(ht==0 ) termina("Errore creazione HT");
+  if(ht==0 ) termina("Errore creazione tabella hash");
 
   //creo la maschera per i segnali
-    sigset_t mask;
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGINT);
-    sigaddset(&mask, SIGTERM);
-    pthread_sigmask(SIG_BLOCK, &mask, NULL);
+  sigset_t mask;
+  sigfillset(&mask);
+  pthread_sigmask(SIG_BLOCK, &mask, NULL);
  
   //thread dei segnali
   pthread_t gestore;
-  pthread_create(&gestore, NULL, &gbody,&mask);
+  pthread_create(&gestore, NULL, &gbody,NULL);
 
   //creo file lettori.log
   file = fopen("lettori.log", "w");
   if (file == NULL) 
       termina("Errore apertura file di log");  
 
+  //numero thread lettori e scrittori
   int r = atoi(argv[1]);
   int w = atoi(argv[2]);
   assert(r>0);
   assert(w>0);
 
-
+  
+  //creazione buffer lettori e scrittori
   char* rbuffer[10];
   char* wbuffer[10];
   //index per i thread capi
@@ -83,7 +80,7 @@ int main(int argc, char *argv[])
   //mutex per accesso al buffer
   pthread_mutex_t rmubuf = PTHREAD_MUTEX_INITIALIZER;
   pthread_mutex_t wmubuf = PTHREAD_MUTEX_INITIALIZER;
-  //mutex per accesso a file lettori.log
+  //mutex per accesso al file lettori.log
   pthread_mutex_t fdmutex = PTHREAD_MUTEX_INITIALIZER; 
   //semafori per accesso al buffer
   sem_t sem_free_slots1, sem_data_items1;
@@ -92,7 +89,7 @@ int main(int argc, char *argv[])
   sem_t sem_free_slots2, sem_data_items2;
   sem_init(&sem_free_slots2,0,PC_buffer_len);
   sem_init(&sem_data_items2,0,0);
-  //variabili per accesso tabella hash
+  //variabili per accesso alla tabella hash
   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
   pthread_mutex_t ordering = PTHREAD_MUTEX_INITIALIZER; 
   pthread_cond_t cond;
@@ -107,12 +104,14 @@ int main(int argc, char *argv[])
   if (fd2 < 0) // se il file non esiste termina con errore
     termina("Errore apertura named pipe");
 
+  //variabili di accesso al buffer per capo lettore
   capo_buffer read_c;
   read_c.buffer = rbuffer; 
   read_c.index = &rpindex;
   read_c.sem_data_items = &sem_data_items1; 
   read_c.sem_free_slots = &sem_free_slots1;
 
+  //variabili di accesso al buffer per capo scrittore
   capo_buffer write_c;
   write_c.sem_data_items = &sem_data_items2; 
   write_c.sem_free_slots = &sem_free_slots2;
@@ -123,7 +122,7 @@ int main(int argc, char *argv[])
   //thread capo lettore
   capi cr;
   cr.buf = read_c;
-  cr.threads = r;//numero di reader
+  cr.threads = r;//numero di lettori
   cr.fd = fd1;
   if((pthread_create(&capoRead,NULL,Capo,&cr))!=0){
       fprintf(stderr, "pthread_create Reader failed\n");
@@ -133,13 +132,14 @@ int main(int argc, char *argv[])
   //thread capo scrittore 
   capi cw;
   cw.buf = write_c;
-  cw.threads = w;//numero di writer
+  cw.threads = w;//numero di scrittori
   cw.fd=fd2;
   if((pthread_create(&capoWrite,NULL,Capo,&cw))!=0){
       fprintf(stderr, "pthread_create Reader failed\n");
       return -1;
   }
 
+  //inzializzo variabili per paradigma lettori scrittori
   hash init;
   init.readers = 0;
   init.writing = 0;
@@ -147,11 +147,13 @@ int main(int argc, char *argv[])
   init.mutex = &mutex;
   init.ordering = &ordering;
 
+  //variabili di accesso al buffer per gli scrittori
   write_c.index=&wcindex;
   buffer buffer_w;
   buffer_w.buf_c = &write_c;
   buffer_w.pmutex_buf = &wmubuf;
 
+  //variabili di l'accesso al buffer per i lettori
   read_c.index = &rcindex;  
   buffer buffer_r;
   buffer_r.buf_c = &read_c;
@@ -165,7 +167,7 @@ int main(int argc, char *argv[])
 
   // creo tutti i lettori
   for(int i=0;i<r;i++) {
-   // faccio partire il thread i
+   // faccio partire il thread lettore i-esimo
     rc[i].access = init;
     rc[i].buf = buffer_r;
     rc[i].mutex_fd = &fdmutex;
@@ -177,7 +179,7 @@ int main(int argc, char *argv[])
   }
   // creo tutti gli scrittori
   for(int i=0;i<w;i++) {
-   // faccio partire il thread i
+   // faccio partire il thread scrittore i-esimo
     wc[i].access = init;
     wc[i].buf = buffer_w;
     if((pthread_create(&write[i],NULL,Writer,wc+i))!=0){
@@ -190,7 +192,7 @@ int main(int argc, char *argv[])
   //join del thread gestore
   pthread_join(gestore, NULL);  
 
-  //join reader e writer
+  //join lettori e scrittori
   for(int i=0;i<w;i++) {
     pthread_join(write[i], NULL);
   }
@@ -202,7 +204,7 @@ int main(int argc, char *argv[])
   //chiusura del file
   fclose(file);
 
-  //libero la memoria
+  //liberazione della memoria
   pthread_mutex_destroy(&mutex);
   pthread_mutex_destroy(&ordering);
   pthread_mutex_destroy(&fdmutex);

@@ -4,30 +4,19 @@ CC=gcc
 CFLAGS = -std=c11 -Wall -g -O -pthread
 LDLIBS=-lm -lrt -pthread 
 
-#EXECS= server.out archivio.out client1.out client2.out
-
-# se si scrive solo make di default compila main.c
-#all: $(EXECS)
-
-#server.out = server.py $< $(CFLAGS)
-
-#clean: 
-#	rm -f *.o $(EXECS)
-
-
 SRCS = archivio.c tabella.c rw.c buffer.c
 OBJS = $(SRCS:.c=.o)
-TARGET = archivio
+EXECS = archivio
 
 .PHONY: all clean
 
-all: $(TARGET)
+all: $(EXECS)
 
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+$(EXECS): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< 
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f *.o $(EXECS)
