@@ -4,7 +4,7 @@ CC=gcc
 CFLAGS = -std=c11 -Wall -g -O -pthread
 LDLIBS=-lm -lrt -pthread 
 
-SRCS = archivio.c tabella.c rw.c buffer.c
+SRCS = archivio.c tabella.c rw.c buffer.c 
 OBJS = $(SRCS:.c=.o)
 EXECS = archivio
 
@@ -12,10 +12,10 @@ EXECS = archivio
 
 all: $(EXECS)
 
-$(EXECS): $(OBJS)
+$(EXECS): $(OBJS) xerrori.o 
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
-%.o: %.c
+%.o: %.c xerrori.h
 	$(CC) $(CFLAGS) -c $< 
 
 clean:

@@ -1,6 +1,8 @@
+#include "xerrori.h"
 #include "tabella.h"
 #include "rw.h"
 #include "buffer.h"
+
 
 
 #define Num_elem 1000000 //dimensione della tabella hash 
@@ -27,8 +29,8 @@ void *gbody(void *arg) {
     }    
 
     if(s==SIGTERM) {  
-      pthread_join(capoWrite, NULL);
-      pthread_join(capoRead, NULL);
+      xpthread_join(capoWrite, NULL,QUI);
+      xpthread_join(capoRead, NULL,QUI);
       fprintf(stdout,"numero elementi nella tabella %d\n",size());
       hdestroy();
       pthread_exit(NULL);
@@ -56,10 +58,10 @@ int main(int argc, char *argv[]) {
  
   //thread dei segnali
   pthread_t gestore;
-  pthread_create(&gestore, NULL, &gbody,NULL);
+  xpthread_create(&gestore, NULL, &gbody,NULL,QUI);
 
   //creo file lettori.log
-  file = fopen("lettori.log", "w");
+  file = xfopen("lettori.log", "w", QUI);
   if (file == NULL) 
       termina("Errore apertura file di log");  
 
@@ -84,16 +86,16 @@ int main(int argc, char *argv[]) {
   pthread_mutex_t fdmutex = PTHREAD_MUTEX_INITIALIZER; 
   //semafori per accesso al buffer
   sem_t sem_free_slots1, sem_data_items1;
-  sem_init(&sem_free_slots1,0,PC_buffer_len);
-  sem_init(&sem_data_items1,0,0);
+  xsem_init(&sem_free_slots1,0,PC_buffer_len,QUI);
+  xsem_init(&sem_data_items1,0,0,QUI);
   sem_t sem_free_slots2, sem_data_items2;
-  sem_init(&sem_free_slots2,0,PC_buffer_len);
-  sem_init(&sem_data_items2,0,0);
+  xsem_init(&sem_free_slots2,0,PC_buffer_len,QUI);
+  xsem_init(&sem_data_items2,0,0,QUI);
   //variabili per accesso alla tabella hash
   pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
   pthread_mutex_t ordering = PTHREAD_MUTEX_INITIALIZER; 
   pthread_cond_t cond;
-  pthread_cond_init(&cond,NULL);
+  xpthread_cond_init(&cond,NULL,QUI);
 
 
   //apertura delle named pipe in lettura
@@ -124,7 +126,7 @@ int main(int argc, char *argv[]) {
   cr.buf = read_c;
   cr.threads = r;//numero di lettori
   cr.fd = fd1;
-  if((pthread_create(&capoRead,NULL,Capo,&cr))!=0){
+  if((xpthread_create(&capoRead,NULL,Capo,&cr,QUI))!=0){
       fprintf(stderr, "pthread_create Reader failed\n");
       return -1;
   }  
@@ -134,7 +136,7 @@ int main(int argc, char *argv[]) {
   cw.buf = write_c;
   cw.threads = w;//numero di scrittori
   cw.fd=fd2;
-  if((pthread_create(&capoWrite,NULL,Capo,&cw))!=0){
+  if((xpthread_create(&capoWrite,NULL,Capo,&cw,QUI))!=0){
       fprintf(stderr, "pthread_create Reader failed\n");
       return -1;
   }
@@ -172,7 +174,7 @@ int main(int argc, char *argv[]) {
     rc[i].buf = buffer_r;
     rc[i].mutex_fd = &fdmutex;
     rc[i].file = file;
-    if((pthread_create(&read[i],NULL,Reader,rc+i))!=0){
+    if((xpthread_create(&read[i],NULL,Reader,rc+i,QUI))!=0){
       fprintf(stderr, "pthread_create Reader failed\n");
       return -1;
     }
@@ -182,7 +184,7 @@ int main(int argc, char *argv[]) {
    // faccio partire il thread scrittore i-esimo
     wc[i].access = init;
     wc[i].buf = buffer_w;
-    if((pthread_create(&write[i],NULL,Writer,wc+i))!=0){
+    if((xpthread_create(&write[i],NULL,Writer,wc+i,QUI))!=0){
       fprintf(stderr, "pthread_create Writer failed\n");
       return -1;
     }
@@ -190,31 +192,31 @@ int main(int argc, char *argv[]) {
 
 
   //join del thread gestore
-  pthread_join(gestore, NULL);  
+  xpthread_join(gestore, NULL,QUI);  
 
   //join lettori e scrittori
   for(int i=0;i<w;i++) {
-    pthread_join(write[i], NULL);
+    xpthread_join(write[i], NULL,QUI);
   }
 
   for(int i=0;i<r;i++) {
-    pthread_join(read[i], NULL);
+    xpthread_join(read[i], NULL,QUI);
   }  
   
   //chiusura del file
   fclose(file);
 
   //liberazione della memoria
-  pthread_mutex_destroy(&mutex);
-  pthread_mutex_destroy(&ordering);
-  pthread_mutex_destroy(&fdmutex);
-  pthread_mutex_destroy(&rmubuf);
-  pthread_mutex_destroy(&wmubuf);
-  pthread_cond_destroy(&cond);
-  sem_destroy(&sem_free_slots1);  
-  sem_destroy(&sem_free_slots2); 
-  sem_destroy(&sem_data_items1);  
-  sem_destroy(&sem_data_items2);
+  xpthread_mutex_destroy(&mutex,QUI);
+  xpthread_mutex_destroy(&ordering,QUI);
+  xpthread_mutex_destroy(&fdmutex,QUI);
+  xpthread_mutex_destroy(&rmubuf,QUI);
+  xpthread_mutex_destroy(&wmubuf,QUI);
+  xpthread_cond_destroy(&cond,QUI);
+  xsem_destroy(&sem_free_slots1,QUI);  
+  xsem_destroy(&sem_free_slots2,QUI); 
+  xsem_destroy(&sem_data_items1,QUI); 
+  xsem_destroy(&sem_data_items2,QUI);
   free(*rbuffer);
   free(*wbuffer);
 }

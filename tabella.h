@@ -1,7 +1,8 @@
 #ifndef TABELLA_H
 #define TABELLA_H
 
-#define _GNU_SOURCE      
+#include "buffer.h"
+
 #include <stdio.h>    
 #include <stdlib.h>   
 #include <assert.h>  
@@ -16,9 +17,8 @@
 #include <fcntl.h>   
 #include <arpa/inet.h>
 #include <stdint.h> 
-#include "buffer.h"
+#include <pthread.h>
 
-#define PC_buffer_len 10// lunghezza dei buffer produttori/consumatori
 
 typedef struct{
   //servono per paradigma lettori scrittori
@@ -29,8 +29,6 @@ typedef struct{
   pthread_mutex_t *ordering; //serve per dare fairness
 }hash;
 
-
-void termina(const char *s); 
 
 ENTRY *entry(char *s, int n);
 void distruggi_entry(ENTRY *e);

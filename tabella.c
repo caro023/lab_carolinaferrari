@@ -1,16 +1,10 @@
 
+#include "xerrori.h"
 #include "tabella.h"
+
 
 //variabile globale per il numero di elementi nella tabella hash
 static int n;
-
-// messaggio errore e stop
-void termina(const char *messaggio) {
-  if(errno!=0) perror(messaggio);
-	else fprintf(stderr,"%s\n", messaggio);
-  exit(1);
-}
-
 
 // crea un oggetto di tipo entry con chiave s e valore n
 ENTRY *entry(char *s, int n) {
@@ -29,7 +23,7 @@ void distruggi_entry(ENTRY *e) {
 }
 
 
-// inserisce gli elementi nella tabella passati come argomento
+// inserisce l'elemento nella tabella hash passato come argomento
 void aggiungi (char *s) {
   ENTRY *e = entry(s, 1);
   ENTRY *r = hsearch(*e,FIND);
@@ -61,47 +55,47 @@ int conta(char *s) {
 
 // inizio uso da parte di un reader
 void read_lock(hash *z) {
-  pthread_mutex_lock(z->ordering);  // coda di ingresso
-  pthread_mutex_lock(z->mutex);
+  xpthread_mutex_lock(z->ordering,QUI);  // coda di ingresso
+  xpthread_mutex_lock(z->mutex,QUI);
   while(z->writing>0)
-    pthread_cond_wait(z->cond, z->mutex);  // attende fine scrittura
+    xpthread_cond_wait(z->cond, z->mutex,QUI);  // attende fine scrittura
   z->readers++;
-  pthread_mutex_unlock(z->ordering); // faccio passare il prossimo se in coda
-  pthread_mutex_unlock(z->mutex);
+  xpthread_mutex_unlock(z->ordering,QUI); // faccio passare il prossimo se in coda
+  xpthread_mutex_unlock(z->mutex,QUI);
 }
 
 // fine uso da parte di un reader
 void read_unlock(hash *z) {
   assert(z->readers>0);  // ci deve essere almeno un reader (me stesso)
   assert(!z->writing);   // non ci devono essere writer 
-  pthread_mutex_lock(z->mutex);
+  xpthread_mutex_lock(z->mutex,QUI);
   z->readers--;                  // aggiorno il numero dei readers       
   if(z->readers==0) 
-    pthread_cond_signal(z->cond); //segnala a chi è in attesa
-  pthread_mutex_unlock(z->mutex);
+    xpthread_cond_signal(z->cond,QUI); //segnala a chi è in attesa
+  xpthread_mutex_unlock(z->mutex,QUI);
 }
 
 
   
 // inizio uso da parte di writer  
 void write_lock(hash *z) {
-  pthread_mutex_lock(z->ordering);    // coda di ingresso
-  pthread_mutex_lock(z->mutex);
+  xpthread_mutex_lock(z->ordering,QUI);    // coda di ingresso
+  xpthread_mutex_lock(z->mutex,QUI);
   while(z->writing>0 || z->readers>0)    
-    pthread_cond_wait(z->cond, z->mutex);   // attende fine scrittura o lettura
+    xpthread_cond_wait(z->cond, z->mutex,QUI);   // attende fine scrittura o lettura
   assert(z->writing==0);
   z->writing++;
-  pthread_mutex_unlock(z->ordering); // faccio passare il prossimo se in coda
-  pthread_mutex_unlock(z->mutex);
+  xpthread_mutex_unlock(z->ordering,QUI); // faccio passare il prossimo se in coda
+  xpthread_mutex_unlock(z->mutex,QUI);
 }
 
 // fine uso da parte di un writer
 void write_unlock(hash *z) {
   assert(z->writing>0); // ci deve essere almeno un writer
-  pthread_mutex_lock(z->mutex);
+  xpthread_mutex_lock(z->mutex,QUI);
   z->writing--;               // aggiorno numero dei writers
-  pthread_cond_signal(z->cond);  //segnala a chi è in attesa
-  pthread_mutex_unlock(z->mutex);
+  xpthread_cond_signal(z->cond,QUI);  //segnala a chi è in attesa
+  xpthread_mutex_unlock(z->mutex,QUI);
 }
 
 // ritorna il numero di elementi della tabella hash
