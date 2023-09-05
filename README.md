@@ -5,10 +5,11 @@ Il progetto consiste in un server che riceve l'input da due tipi diversi di clie
 ## Scelte implementative
 
 - I file in python client1, client2 e server.py sono eseguibili.
- Per il file archivio.c va creato l'eseguibile attraverso il comando make che dipenderà dalle librerie "rw.h", "buffer.h" e "tabella.h".
-- In tabella.h sono presenti le librerie necessarie per avviare il programma, la struct con gli elementi per accedere in modo safe alla tabella hash, le funzioni per il paradigma lettori scrittori e le funzioni relative alla tabella hash.
+ Per il file archivio.c va creato l'eseguibile attraverso il comando make che dipenderà dalle librerie "rw.h", "buffer.h", "tabella.h" e "xerrori.h".
+- In tabella.h è presente la struct con gli elementi per accedere in modo safe alla tabella hash, le funzioni per il paradigma lettori scrittori e le funzioni relative alla tabella hash.
 - In rw.h sono presenti le funzioni e le struct utilizzate per i threads lettori, scrittori e i rispettivi capi.
 - In buffer.h sono presenti le struct per accedere al buffer da parte dei capi e dei thread lettori scrittori e le funzioni con le due possibili operazioni da fare sul buffer ossia inserimento e rimozione di una stringa.
+- in xerrori.h sono presenti le librerie necessarie per l'avvio del programma e delle ridefinizioni di funzioni di libreria che permettono dei controlli maggiori e, in caso di errore, indicano la linea e il file in cui si è verificato.
 
 
 ### client1
@@ -16,6 +17,10 @@ Il progetto consiste in un server che riceve l'input da due tipi diversi di clie
 Riceve in input un file e invia una alla volta le linee di testo al server con una connessione di tipo A. 
 Per segnalare al server il tipo di connessione viene inviata inizialmente una sequenza di bytes che rappresentano la lettera "a". 
 Il file di testo viene letto una riga alla volta che sarà inviata attraverso la funzione send_line(sock, line). Questa funzione trasforma la linea di testo in una sequenza di bytes e ne calcola la lunghezza che sarà inviata al server prima della sequenza stessa.
+##### Esempio di comando per avviare il client
+```shell
+./client1 file3    
+```    
 
 ### client2
 
@@ -23,6 +28,10 @@ Il client2 riceve in input uno o più file di testo.
 Nel main viene creato un thread per ogni file passato da riga di comando. 
 I threads attraverso la funzione send_file(file_name) si connettono al server con una connessione di tipo B segnalata inizialmente con la prima sequenza di bytes. Successivamente inviano, attraverso la funzione send_file(sock, line), che si differenzia dalla precendente solo per l'utilizzo di una variabile di lock necessaria per la presenza di diversi threads, le varie righe del file di testo.
 Infine inviano una sequenza di lunghezza 0 per segnalare la fine della connessione.
+##### Esempio di comando per avviare il client
+```shell
+./client2 file1 file2  
+```    
 
 ### Server
 
@@ -38,20 +47,27 @@ Dopo aver ricevuto le sequenze vengono scritte sulla rispettiva FIFO utilizzando
 
 Il server quando riceve il segnale KeyboardInterrupt, corrispondente a SIGINT, chiude e cancella le FIFO, invia al programma 'archivio' il segnale SIGTERM e chiude il socket.
 
+##### Esempio di comando per avviare il server
+```shell
+./server.py 5 -r 2 -w 4 -v
+```   
+
 
 ### Archivio
 
-Il file archivio.c riceve da riga di comando il numero di threads scrittori e lettori che verranno creati.
+Il file archivio rappresenta un eseguibile che verrà avviato grazie al server. Per creare l'eseguibile è necessario eseguire il comando `make`. 
 
-Crea i threads "capo lettore" e "capo scrittore". Essi attraverso la funzione Capo, definita nella libreria "tabella.h", leggono gli input dalla rispettiva FIFO e effettuano una tokenizzazione attraverso la funione strtok_r in quanto è thread safe. 
-Inseriscono una copia del token ottenuto in un buffer condiviso attraverso la funzione put(capo_buffer *a,char *str) definita in "buffer.h".
+Riceve da riga di comando il numero di threads scrittori e lettori che verranno creati.
+
+Crea i threads "capo lettore" e "capo scrittore". Essi leggono gli input dalla rispettiva FIFO e effettuano una tokenizzazione attraverso la funione strtok_r che è thread safe. 
+Inseriscono una copia del token ottenuto in un buffer condiviso.
 Quando la FIFO viene chiusa in scrittura inviano un carattere di terminazione (NULL) ai threads lettori e scrittori prima di chiuderla anche in lettura e terminare.
 La gestione del buffer produttori-consumatori avviene attraverso l'uso di semafori.
 
-I threads scrittori leggono una stringa dal buffer e chiamano la funzione aggiungi(char *s) che inserisce la stringa nella tabella hash se non presente e aggiorna il numero di elementi totali nella tabella contenuto in una variabile globale, altrimenti incrementa il valore associato a essa.
-L'accesso alla tabella avviene attraverso un meccanismo lettori scrittori che garantisce l'ordinamento grazie al mutex ordering e quindi fair per entrambi.
+I threads scrittori leggono una stringa dal buffer e chiamano la funzione aggiungi(char *s) che inserisce la stringa nella tabella hash se non presente e aggiorna il numero di elementi totali nella tabella che è contenuto in una variabile globale, altrimenti incrementa il valore associato a essa.
+L'accesso alla tabella avviene attraverso un meccanismo lettori scrittori che garantisce l'ordinamento grazie al mutex ordering e quindi fair per entrambi. Questo meccanosmo ci permette di usare una singola condition variable.
 
-I threads lettori leggono una stringa dal buffer e chiamano la funzione conta(char *s) che restituisce il numero di occorrenze prensenti nella tabella hash della stringa e scrive il risultato nel file 'lettori.log'.
+I threads lettori leggono una stringa dal buffer e chiamano la funzione conta(char *s) che restituisce il numero di occorrenze prensenti nella tabella hash della stringa e scrivono il risultato nel file 'lettori.log'.
 
 I segnali SIGINT e SIGTERM ricevuti dal programma archivio vengono gestiti dal thread gestore. 
 Quando viene ricevuto il segnale SIGINT viene stampato su stderr il numero di elementi presenti nella tabella chiamando la funzione size().

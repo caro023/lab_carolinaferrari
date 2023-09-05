@@ -22,6 +22,5 @@ typedef struct {
 void *Reader(void* arg);
 void *Writer(void* arg);
 void* Capo(void* arg);
-void rw_init(hash *z);
 
 #endif  // RW_H
