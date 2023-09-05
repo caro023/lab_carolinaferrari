@@ -1,5 +1,4 @@
 
-#include "xerrori.h"
 #include "tabella.h"
 
 

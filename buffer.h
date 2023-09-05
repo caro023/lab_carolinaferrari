@@ -1,6 +1,10 @@
 #ifndef BUFFER_H
 #define BUFFER_H
 
+#include "xerrori.h"
+#include "tabella.h"
+
+
 typedef struct {
   //accesso al buffer 
   char **buffer;  

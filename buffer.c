@@ -1,9 +1,4 @@
-#include "xerrori.h"
-#include "tabella.h"
-
-
-
-
+#include "buffer.h"
 
 char* get(buffer *z) {
     char* str = NULL;

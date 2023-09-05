@@ -1,23 +1,8 @@
 #ifndef TABELLA_H
 #define TABELLA_H
 
+#include "xerrori.h"
 #include "buffer.h"
-
-#include <stdio.h>    
-#include <stdlib.h>   
-#include <assert.h>  
-#include <string.h>  
-#include <errno.h>
-#include <search.h>
-#include <signal.h>  
-#include <unistd.h>  
-#include <stdbool.h>
-#include <semaphore.h>
-#include <pthread.h> 
-#include <fcntl.h>   
-#include <arpa/inet.h>
-#include <stdint.h> 
-#include <pthread.h>
 
 
 typedef struct{

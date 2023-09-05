@@ -2,6 +2,8 @@
 #define RW_H
 
 #include "tabella.h"
+#include "buffer.h"
+#include "rw.h"
 
 typedef struct {
   hash access;
