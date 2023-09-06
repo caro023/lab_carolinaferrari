@@ -1,7 +1,5 @@
-#include "xerrori.h"
-#include "tabella.h"
 #include "rw.h"
-#include "buffer.h"
+
 
 
 

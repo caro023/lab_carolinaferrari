@@ -39,22 +39,23 @@ def main(max):
       s.listen()
       
       with concurrent.futures.ThreadPoolExecutor(max_workers=max) as executor:
+        print("Apertura del server")
         while True:
           # mi metto in attesa di una connessione
-          print("In attesa di un client...")
-          #il client deve scrivere il tipo di connessione         
+                 
           conn, addr = s.accept()
           data = conn.recv(1)
           tconn = data.decode()
+          #il client scrive il tipo di connessione  
           if tconn == "a":
             executor.submit(gestisci_connessione, conn,addr,fd1)
-            print('connessione tipo A')
+            print('Connessione di tipo A')
           elif tconn == "b":
             executor.submit(gestisci_connessione, conn,addr,fd2)
-            print('connessione tipo B')
+            print('Connessione di tipo B')
           else: print('connessione da client generico')
     except KeyboardInterrupt:
-      print('chiusura del server') 
+      print('Chiusura del server') 
       os.close(fd1)
       os.close(fd2) 
       os.unlink(Pipesc)
