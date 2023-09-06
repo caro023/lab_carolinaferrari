@@ -1,8 +1,5 @@
 #include "rw.h"
 
-
-
-
 #define Num_elem 1000000 //dimensione della tabella hash 
 
 FILE *file;
@@ -167,7 +164,7 @@ int main(int argc, char *argv[]) {
 
   // creo tutti i lettori
   for(int i=0;i<r;i++) {
-   // faccio partire il thread lettore i-esimo
+    // faccio partire il thread lettore i-esimo
     rc[i].access = init;
     rc[i].buf = buffer_r;
     rc[i].mutex_fd = &fdmutex;
@@ -179,7 +176,7 @@ int main(int argc, char *argv[]) {
   }
   // creo tutti gli scrittori
   for(int i=0;i<w;i++) {
-   // faccio partire il thread scrittore i-esimo
+    // faccio partire il thread scrittore i-esimo
     wc[i].access = init;
     wc[i].buf = buffer_w;
     if((xpthread_create(&write[i],NULL,Writer,wc+i,QUI))!=0){

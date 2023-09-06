@@ -5,7 +5,7 @@
 FILE* file;
 void *Reader(void* arg) {
   rw *a = ( rw *)arg;
-  char* str; // Inizializza il puntatore a NULL
+  char* str; 
   //accesso al buffer
   str = get(&a->buf);
   int tot;  

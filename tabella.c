@@ -37,7 +37,7 @@ void aggiungi (char *s) {
     assert(strcmp(e->key,r->key)==0);
     int *d = (int *) r->data;
     *d +=1;
-    distruggi_entry(e); // questa non la devo memorizzare
+    distruggi_entry(e); 
   }
 }
 
@@ -68,7 +68,7 @@ void read_unlock(hash *z) {
   assert(z->readers>0);  // ci deve essere almeno un reader (me stesso)
   assert(!z->writing);   // non ci devono essere writer 
   xpthread_mutex_lock(z->mutex,QUI);
-  z->readers--;                  // aggiorno il numero dei readers       
+  z->readers--;   // aggiorno il numero dei readers       
   if(z->readers==0) 
     xpthread_cond_signal(z->cond,QUI); //segnala a chi è in attesa
   xpthread_mutex_unlock(z->mutex,QUI);
@@ -78,10 +78,10 @@ void read_unlock(hash *z) {
   
 // inizio uso da parte di writer  
 void write_lock(hash *z) {
-  xpthread_mutex_lock(z->ordering,QUI);    // coda di ingresso
+  xpthread_mutex_lock(z->ordering,QUI);   // coda di ingresso
   xpthread_mutex_lock(z->mutex,QUI);
   while(z->writing>0 || z->readers>0)    
-    xpthread_cond_wait(z->cond, z->mutex,QUI);   // attende fine scrittura o lettura
+    xpthread_cond_wait(z->cond, z->mutex,QUI);  // attende fine scrittura o lettura
   assert(z->writing==0);
   z->writing++;
   xpthread_mutex_unlock(z->ordering,QUI); // faccio passare il prossimo se in coda

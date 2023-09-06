@@ -71,13 +71,13 @@ def gestisci_connessione(conn,addr,fd):
     while True:  
       data = conn.recv(2)
       if not data:
-          logging.debug(f"Tipo A. Bytes {tot}")
+          logging.debug(f"Connessione di tipo A. Bytes {tot}")
           break
       
       if(struct.unpack("!h",data)[0]==0):
         line = conn.recv(1)
         if(line.decode()==""):
-          logging.debug(f"Tipo B. Bytes {tot}")
+          logging.debug(f"Connessione di tipo B. Bytes {tot}")
           break
       
      
