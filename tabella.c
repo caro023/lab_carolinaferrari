@@ -4,6 +4,8 @@
 
 //variabile globale per il numero di elementi nella tabella hash
 static int n;
+//mutex per la funzione hsearch
+pthread_mutex_t search = PTHREAD_MUTEX_INITIALIZER;
 
 // crea un oggetto di tipo entry con chiave s e valore n
 ENTRY *entry(char *s, int n) {
@@ -24,8 +26,10 @@ void distruggi_entry(ENTRY *e) {
 
 // inserisce l'elemento nella tabella hash passato come argomento
 void aggiungi (char *s) {
-  ENTRY *e = entry(s, 1);
+  ENTRY *e = entry(s, 1);  
+  pthread_mutex_lock(&search);
   ENTRY *r = hsearch(*e,FIND);
+  pthread_mutex_unlock(&search);  
   if(r==NULL) { // la entry è nuova
     r = hsearch(*e,ENTER);
     if(r==NULL) termina("errore o tabella piena");
@@ -45,7 +49,9 @@ void aggiungi (char *s) {
 // ritorna il valore associato alla stringa se presente, altrimenti 0
 int conta(char *s) {   
   ENTRY *e = entry(s, 1);
+  pthread_mutex_lock(&search);
   ENTRY *r = hsearch(*e,FIND);
+  pthread_mutex_unlock(&search);
   distruggi_entry(e);
   if(r==NULL) return 0;
   else return (*((int *) r->data));    

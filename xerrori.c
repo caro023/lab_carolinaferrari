@@ -36,21 +36,13 @@ void xclose(int fd, int linea, char *file) {
 }
 // ---- semafori POSIX
 
-// IMPORTANTE: i semafori posix sono usati sia da processi che da threads
-// Nel caso dei threads, non è opportuno eseguire in caso di errore exit(1)
-// in quanto questo fa terminare tutti i thread del processo: bisognerebbe
-// chiamare pthread_exit() che fa terminare solo il thread corrente
-// (usare pthread_exit per i processi ugualmente non è accettabile 
-// perché poi invoca exit(0)). 
-// Si potrebbe distinguere thread da processi con gettid(2)
-
 // semafori UNNAMED
 int xsem_init(sem_t *sem, int pshared, unsigned int value, int linea, char *file) {
   int e = sem_init(sem,pshared,value);
   if(e !=0) {
     perror("Errore sem_init"); 
     fprintf(stderr,"== %d == Linea: %d, File: %s\n",getpid(),linea,file);
-    exit(1);
+    pthread_exit(NULL);
   }
   return e;
 }
@@ -60,7 +52,7 @@ int xsem_destroy(sem_t *sem, int linea, char *file) {
   if(e !=0) {
     perror("Errore sem_destroy"); 
     fprintf(stderr,"== %d == Linea: %d, File: %s\n",getpid(),linea,file);
-    exit(1);
+    pthread_exit(NULL);
   }
   return e;
 }
@@ -71,7 +63,7 @@ int xsem_post(sem_t *sem, int linea, char *file) {
   if(e !=0) {
     perror("Errore sem_post"); 
     fprintf(stderr,"== %d == Linea: %d, File: %s\n",getpid(),linea,file);
-    exit(1);
+    pthread_exit(NULL);
   }
   return e;
 }
@@ -81,19 +73,10 @@ int xsem_wait(sem_t *sem, int linea, char *file) {
   if(e !=0) {
     perror("Errore sem_wait"); 
     fprintf(stderr,"== %d == Linea: %d, File: %s\n",getpid(),linea,file);
-    exit(1);
+    pthread_exit(NULL);
   }
   return e;
 }
-
-
-
-
-// ----- funzioni per thread: in caso di errore non scrivono 
-// il codice d'errore in errno ma lo restituiscono
-// come return value. Un return value==0 indica nessun errore
-// errno viene evitato perché in certe implementazioni 
-// non è thread-safe (nei linux recenti lo è)
 
 // stampa il messaggio d'errore associato al codice en 
 // in maniera simile a perror
@@ -107,9 +90,7 @@ void xperror(int en, char *msg) {
     fprintf(stderr,"%s\n",errmsg);
 }
 
-
 // threads: creazione e join
-
 int xpthread_create(pthread_t *thread, const pthread_attr_t *attr,
                           void *(*start_routine) (void *), void *arg, int linea, char *file) {
   int e = pthread_create(thread, attr, start_routine, arg);
@@ -131,11 +112,7 @@ int xpthread_join(pthread_t thread, void **retval, int linea, char *file) {
   return e;
 }
 
-
-
-
 // mutex 
-
 int xpthread_mutex_destroy(pthread_mutex_t *mutex, int linea, char *file) {
   int e = pthread_mutex_destroy(mutex);
   if (e!=0) {

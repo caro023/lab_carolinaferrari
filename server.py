@@ -11,7 +11,7 @@ lock = threading.Lock()
 Max_sequence_length = 2048
 
 logging.basicConfig(filename= 'server.log',
-                    level=logging.DEBUG, datefmt='%d/%m/%y %H:%M:%S',
+                    level=logging.INFO, datefmt='%d/%m/%y %H:%M:%S',
                     format='%(asctime)s - %(message)s')
 
 
@@ -71,13 +71,13 @@ def gestisci_connessione(conn,addr,fd):
     while True:  
       data = conn.recv(2)
       if not data:
-          logging.debug(f"Connessione di tipo A. Bytes {tot}")
+          logging.info(f"Connessione di tipo A. Bytes {tot}")
           break
       
       if(struct.unpack("!h",data)[0]==0):
         line = conn.recv(1)
         if(line.decode()==""):
-          logging.debug(f"Connessione di tipo B. Bytes {tot}")
+          logging.info(f"Connessione di tipo B. Bytes {tot}")
           break
       
      

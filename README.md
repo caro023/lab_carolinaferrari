@@ -65,6 +65,8 @@ Quando la FIFO viene chiusa in scrittura inviano un carattere di terminazione (N
 La gestione del buffer produttori-consumatori avviene attraverso l'uso di semafori.
 
 I threads scrittori leggono una stringa dal buffer e chiamano la funzione aggiungi(char *s) che inserisce la stringa nella tabella hash se non presente e aggiorna il numero di elementi totali nella tabella che è contenuto in una variabile globale, altrimenti incrementa il valore associato a essa.
+La ricerca della chiave con la funzione hsearch è MT-unsafe, per questo la chiamata è regolata da un mutex. 
+Le funzioni per l'accesso alla tabella garantiscono che solo uno scrittore avrà accesso, quindi il mutex per incrementare la variabile n non è necessario.
 L'accesso alla tabella avviene attraverso un meccanismo lettori scrittori che garantisce l'ordinamento grazie al mutex ordering e quindi fair per entrambi. Questo meccanosmo ci permette di usare una singola condition variable.
 
 I threads lettori leggono una stringa dal buffer e chiamano la funzione conta(char *s) che restituisce il numero di occorrenze prensenti nella tabella hash della stringa e scrivono il risultato nel file 'lettori.log'.
